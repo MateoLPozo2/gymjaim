@@ -125,13 +125,11 @@ function Dashboard() {
                 .
               </div>
             )}
-            <Button
-              className="w-full mt-3 gap-2"
-              disabled={suggestMut.isPending || onboarding.isLoading}
-              onClick={() => suggestMut.mutate()}
-            >
-              <Sparkles className="h-4 w-4" />
-              {suggestMut.isPending ? "Picking…" : "Suggest me three exercises based on my goals"}
+            <Button asChild className="w-full mt-3 gap-2">
+              <Link to="/welcome">
+                <Sparkles className="h-4 w-4" />
+                Suggest me three exercises based on my goals
+              </Link>
             </Button>
           </CardContent>
 
