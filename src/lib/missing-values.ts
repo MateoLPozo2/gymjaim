@@ -6,7 +6,7 @@
 //
 // The same `seed` always produces the same set of deleted-row indices, so
 // "Reset" and email follow-ups land on the exact same starting state.
-import { ParsedCsv, dropMissingRows, getColumn } from "./csv";
+import { ParsedCsv, dropMissingRows, getColumn, numericColumns } from "./csv";
 import { mulberry32, sampleWithoutReplacement } from "./seeded-random";
 import { mean, quantile } from "./stats";
 
@@ -43,7 +43,9 @@ export function buildPlan(
   const condCol =
     conditionCol && conditionCol !== targetCol
       ? conditionCol
-      : cleanCsv.columns.find((c) => c !== targetCol && c !== yCol) ?? targetCol;
+      : numericColumns(cleanCsv).find((c) => c !== targetCol && c !== yCol) ??
+        cleanCsv.columns.find((c) => c !== targetCol && c !== yCol) ??
+        targetCol;
   const condValuesRaw = getColumn(cleanCsv, condCol).filter(
     (v): v is number => v !== null,
   );
@@ -72,6 +74,8 @@ export function buildPlan(
       return hardQuartile === "top" ? v >= threshold : v <= threshold;
     });
   }
+
+  if (eligible.length === 0) eligible = allIdx;
 
   const pct = 0.1 + rand() * 0.2; // 10-30%
   const n = Math.max(1, Math.floor(eligible.length * pct));
