@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      attempts: {
+        Row: {
+          code: string | null
+          created_at: string
+          exercise_id: string
+          expected_slope: number | null
+          id: string
+          matched_oracle: boolean
+          optimal_slope: number | null
+          seed: number
+          slope_delta: number | null
+          user_id: string
+          user_slope: number | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          exercise_id: string
+          expected_slope?: number | null
+          id?: string
+          matched_oracle?: boolean
+          optimal_slope?: number | null
+          seed: number
+          slope_delta?: number | null
+          user_id: string
+          user_slope?: number | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          exercise_id?: string
+          expected_slope?: number | null
+          id?: string
+          matched_oracle?: boolean
+          optimal_slope?: number | null
+          seed?: number
+          slope_delta?: number | null
+          user_id?: string
+          user_slope?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attempts_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       datasets: {
         Row: {
           builtin_key: string | null
@@ -53,6 +103,56 @@ export type Database = {
         }
         Relationships: []
       }
+      exercises: {
+        Row: {
+          author_id: string
+          condition_col: string | null
+          created_at: string
+          dataset_id: string
+          description: string | null
+          difficulty: Database["public"]["Enums"]["exercise_difficulty"]
+          id: string
+          target_col: string
+          title: string
+          visibility: Database["public"]["Enums"]["exercise_visibility"]
+          y_col: string
+        }
+        Insert: {
+          author_id: string
+          condition_col?: string | null
+          created_at?: string
+          dataset_id: string
+          description?: string | null
+          difficulty?: Database["public"]["Enums"]["exercise_difficulty"]
+          id?: string
+          target_col: string
+          title: string
+          visibility?: Database["public"]["Enums"]["exercise_visibility"]
+          y_col: string
+        }
+        Update: {
+          author_id?: string
+          condition_col?: string | null
+          created_at?: string
+          dataset_id?: string
+          description?: string | null
+          difficulty?: Database["public"]["Enums"]["exercise_difficulty"]
+          id?: string
+          target_col?: string
+          title?: string
+          visibility?: Database["public"]["Enums"]["exercise_visibility"]
+          y_col?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -79,6 +179,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      review_queue: {
+        Row: {
+          created_at: string
+          due_at: string
+          exercise_id: string
+          id: string
+          seed: number
+          sent_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          due_at: string
+          exercise_id: string
+          id?: string
+          seed: number
+          sent_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          due_at?: string
+          exercise_id?: string
+          id?: string
+          seed?: number
+          sent_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_queue_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
