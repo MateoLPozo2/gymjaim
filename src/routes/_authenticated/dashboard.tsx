@@ -19,8 +19,6 @@ function Dashboard() {
   const attemptsFn = useServerFn(listAttempts);
   const dueFn = useServerFn(listDueReviews);
   const exFn = useServerFn(listExercises);
-  const onbFn = useServerFn(getOnboardingStatus);
-  const suggestFn = useServerFn(getStarterSuggestions);
 
   const attempts = useQuery({ queryKey: ["attempts"], queryFn: () => attemptsFn() });
   const due = useQuery({ queryKey: ["reviews-due"], queryFn: () => dueFn() });
@@ -28,19 +26,8 @@ function Dashboard() {
     queryKey: ["exercises", "public"],
     queryFn: () => exFn({ data: { scope: "public" } }),
   });
-  const onboarding = useQuery({ queryKey: ["onboarding-status"], queryFn: () => onbFn() });
 
-  const suggestMut = useMutation({
-    mutationFn: async () => {
-      const topics: string[] = onboarding.data?.profile?.preferred_topics ?? [];
-      const safeTopics = topics.length > 0 ? topics : ["regression"];
-      return suggestFn({ data: { topics: safeTopics } });
-    },
-  });
-
-  const suggested =
-    suggestMut.data?.suggestions ??
-    (exercises.data?.exercises ?? []).slice(0, 3);
+  const suggested = (exercises.data?.exercises ?? []).slice(0, 3);
 
 
   const last7 = (attempts.data?.attempts ?? []).filter(
