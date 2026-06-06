@@ -9,13 +9,13 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "GymJaim — Practice gym for data inference judgment" },
+      { title: "Jim's Data Gym — Practice gym for data inference judgment" },
       {
         name: "description",
         content:
           "A controlled, supportive practice gym for junior data scientists. Real pandas in the browser, oracle-graded answers, spaced-repetition email reps that pull you back to sharpen your judgment.",
       },
-      { property: "og:title", content: "GymJaim — Practice gym for data inference judgment" },
+      { property: "og:title", content: "Jim's Data Gym — Practice gym for data inference judgment" },
       {
         property: "og:description",
         content:
@@ -60,7 +60,7 @@ function LandingPage() {
             </h1>
             <p className="mt-6 max-w-xl text-lg text-muted-foreground leading-relaxed">
               You delete the missing rows, the regression breaks, your PM nods. Did your imputation
-              help, hurt, or change the answer entirely? GymJaim grades every rep against the ground
+              help, hurt, or change the answer entirely? Jim's Data Gym grades every rep against the ground
               truth and emails you back in two days to do it again.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -154,7 +154,7 @@ function LandingPage() {
           <div>
             <p className="text-xs font-medium uppercase tracking-widest text-accent">The wedge</p>
             <h2 className="mt-3 font-display text-3xl tracking-tight">
-              Kaggle teaches you to win. GymJaim teaches you to be right.
+              Kaggle teaches you to win. Jim's Data Gym teaches you to be right.
             </h2>
             <p className="mt-4 text-muted-foreground leading-relaxed">
               We're not a tutorial site, not a notebook host, not a leaderboard. Every exercise has a
@@ -225,7 +225,7 @@ function LandingPage() {
           <BrandLogo />
           <div className="flex items-center gap-4">
             <a href="mailto:jimbodonahue@gmail.com" className="hover:text-foreground">Contact</a>
-            <span>© {new Date().getFullYear()} GymJaim</span>
+            <span>© {new Date().getFullYear()} Jim's Data Gym</span>
           </div>
         </div>
       </footer>

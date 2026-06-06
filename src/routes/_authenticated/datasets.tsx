@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/datasets")({
-  head: () => ({ meta: [{ title: "Datasets — GymJaim" }] }),
+  head: () => ({ meta: [{ title: "Datasets — Jim's Data Gym" }] }),
   component: DatasetsPage,
 });
 

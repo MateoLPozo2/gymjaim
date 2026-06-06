@@ -10,7 +10,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Dumbbell, Flame, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — GymJaim" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — Jim's Data Gym" }] }),
   component: Dashboard,
 });
 
