@@ -181,23 +181,23 @@ function LandingPage() {
       {/* Team */}
       <section className="mx-auto max-w-5xl px-6 py-20">
         <p className="text-xs font-medium uppercase tracking-widest text-accent">Who's building this</p>
-        <h2 className="mt-3 font-display text-3xl tracking-tight">Founder edge</h2>
-        <div className="mt-6 grid gap-8 md:grid-cols-[auto_1fr] items-start">
-          <div className="h-24 w-24 rounded-full bg-gradient-to-br from-accent/30 to-secondary border border-border" />
-          <div className="text-muted-foreground leading-relaxed">
-            <p className="text-foreground font-medium">Jim Donahue, founder</p>
-            <p className="mt-2">
-              Built the original Streamlit version after watching juniors mean-impute their way into
-              wrong answers for the third year running. Background in applied stats + ML; reachable at{" "}
-              <a className="text-foreground underline underline-offset-4" href="mailto:jimbodonahue@gmail.com">
-                jimbodonahue@gmail.com
+        <h2 className="mt-3 font-display text-3xl tracking-tight">The team</h2>
+        <div className="mt-10 grid gap-8 sm:grid-cols-2 md:grid-cols-4">
+          {[
+            { name: "James Donahue", role: "Data Lead", email: "jimbodonahue@gmail.com" },
+            { name: "Mateo Lopez Pozo", role: "Key Software Engineer", email: "lopezpozomateo@gmail.com" },
+            { name: "Binson Joseph", role: "Backend Data Developer", email: "binson1000@gmail.com" },
+            { name: "Isabella Kiesslich", role: "Marketing and User Experience Expert", email: "isabella@peelandpulp.digtal" },
+          ].map((m) => (
+            <div key={m.email}>
+              <div className="h-20 w-20 rounded-full bg-gradient-to-br from-accent/30 to-secondary border border-border" />
+              <p className="mt-4 text-foreground font-medium">{m.name}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{m.role}</p>
+              <a className="mt-1 block text-sm text-foreground underline underline-offset-4 break-all" href={`mailto:${m.email}`}>
+                {m.email}
               </a>
-              .
-            </p>
-            <p className="mt-3 text-sm">
-              <em>Placeholder — swap in your real bio &amp; photo from settings.</em>
-            </p>
-          </div>
+            </div>
+          ))}
         </div>
       </section>
 
