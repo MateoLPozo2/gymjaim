@@ -18,9 +18,10 @@ import { useVoiceCoach } from "@/hooks/use-voice-coach";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { generateFeedback, type FeedbackResult } from "@/lib/exercise/feedback";
 import { DatasetInspector } from "./DatasetInspector";
+import { FeedbackPanels } from "./FeedbackPanels";
 import { OutputPanel } from "./OutputPanel";
-import { RegressionChart } from "./RegressionChart";
 
 interface ExerciseRunnerProps {
   exercise: ExerciseMeta & {
@@ -45,6 +46,7 @@ export function ExerciseRunner({
   const [workingCsv, setWorkingCsv] = useState<ReturnType<typeof parseCsv> | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const datasetLoadedRef = useRef(false);
+  const datasetLoadingRef = useRef(false);
   const briefingPlayedRef = useRef(false);
 
   const starterCode = useMemo(
@@ -62,6 +64,8 @@ export function ExerciseRunner({
   const [saving, setSaving] = useState(false);
   const [hasRun, setHasRun] = useState(false);
   const [recorded, setRecorded] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackResult | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   // Load CSV and build missing-value plan.
   useEffect(() => {
@@ -98,35 +102,39 @@ export function ExerciseRunner({
     };
   }, [exercise.id, datasetUrl, seed, exercise]);
 
-  // Reset pandas load flag when Pyodide reboots (e.g. retry).
+  // Reset pandas load flags when Pyodide reboots (e.g. retry).
   useEffect(() => {
     if (pyodide.status === "booting") {
       datasetLoadedRef.current = false;
+      datasetLoadingRef.current = false;
     }
   }, [pyodide.status]);
 
   // Load plan into Pyodide once when ready.
   useEffect(() => {
-    if (!plan || dataLoading || datasetLoadedRef.current) return;
+    if (!plan || dataLoading) return;
+    if (datasetLoadedRef.current || datasetLoadingRef.current) return;
     if (pyodide.status === "error") return;
     if (pyodide.status !== "ready" && pyodide.status !== "loaded") return;
 
+    datasetLoadingRef.current = true;
     let cancelled = false;
     (async () => {
       try {
         await pyodide.loadDataset(csvToString(plan.workingCsv));
         if (!cancelled) datasetLoadedRef.current = true;
       } catch (e: unknown) {
-        if (!cancelled)
+        if (!cancelled) {
+          datasetLoadingRef.current = false;
           toast.error(e instanceof Error ? e.message : "Failed to load dataset into pandas");
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-load when plan or boot status changes
-  }, [plan, dataLoading, pyodide.status === "ready" || pyodide.status === "loaded"]);
+  }, [plan, dataLoading, pyodide.status]);
 
   // Voice briefing on first load.
   useEffect(() => {
@@ -175,8 +183,27 @@ export function ExerciseRunner({
           conditionCol: exercise.condition_col,
         });
         applyRunResult(result);
-        if (result.error) toast.error(result.error);
-        else toast.success("Run complete (JS fallback)");
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          toast.success("Run complete (JS fallback)");
+          if (plan && result.dfCsv) {
+            const newCsv = parseCsv(result.dfCsv);
+            const g = gradeAttempt(plan, newCsv, exercise);
+            setFeedback(null);
+            setFeedbackLoading(true);
+            setTimeout(() => {
+              setFeedback(generateFeedback({
+                targetCol: exercise.target_col,
+                yCol: exercise.y_col,
+                conditionCol: exercise.condition_col,
+                userCode: code,
+                slopes: { expected: g.slopes.expected, user: g.slopes.user, optimal: g.slopes.optimal, delta: g.delta, pct: g.pct, matched: g.matched },
+              }));
+              setFeedbackLoading(false);
+            }, 600);
+          }
+        }
       } finally {
         setRunning(false);
       }
@@ -196,8 +223,27 @@ export function ExerciseRunner({
     try {
       const result = await pyodide.exec(code);
       applyRunResult(result);
-      if (result.error) toast.error("Code raised an exception — see output");
-      else toast.success("Run complete");
+      if (result.error) {
+        toast.error("Code raised an exception — see output");
+      } else {
+        toast.success("Run complete");
+        if (plan && result.dfCsv) {
+          const newCsv = parseCsv(result.dfCsv);
+          const g = gradeAttempt(plan, newCsv, exercise);
+          setFeedback(null);
+          setFeedbackLoading(true);
+          setTimeout(() => {
+            setFeedback(generateFeedback({
+              targetCol: exercise.target_col,
+              yCol: exercise.y_col,
+              conditionCol: exercise.condition_col,
+              userCode: code,
+              slopes: { expected: g.slopes.expected, user: g.slopes.user, optimal: g.slopes.optimal, delta: g.delta, pct: g.pct, matched: g.matched },
+            }));
+            setFeedbackLoading(false);
+          }, 600);
+        }
+      }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Run failed");
     } finally {
@@ -212,6 +258,8 @@ export function ExerciseRunner({
     setOutput(null);
     setRecorded(false);
     setHasRun(false);
+    setFeedback(null);
+    setFeedbackLoading(false);
     if (pyodide.status === "error") {
       toast.success("Reverted dataset and code to the starter state");
       return;
@@ -387,8 +435,7 @@ export function ExerciseRunner({
           <CardHeader>
             <CardTitle className="font-display text-lg">Score vs. the truth</CardTitle>
             <CardDescription>
-              The blue line is the regression on the un-deleted data. Yours is the dashed ochre
-              line.
+              Two independent reviewers — The Coach and The Critic — respond after each run.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -407,13 +454,16 @@ export function ExerciseRunner({
                 <Check className="h-4 w-4" /> Great — that's the oracle answer.
               </div>
             )}
-            <div className="mt-5 h-72">
-              {plan && grade ? (
-                <RegressionChart plan={plan} exercise={exercise} slopes={grade.slopes} />
-              ) : (
-                <p className="text-sm text-muted-foreground">Preparing chart…</p>
-              )}
-            </div>
+            <FeedbackPanels
+              coach={feedback?.coach ?? null}
+              critic={feedback?.critic ?? null}
+              loading={feedbackLoading}
+            />
+            {!feedbackLoading && !feedback && (
+              <p className="mt-5 text-sm text-muted-foreground">
+                Run your code to get feedback.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
