@@ -15,8 +15,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
 import { Route as AuthenticatedExercisesRouteImport } from './routes/_authenticated/exercises'
+import { Route as AuthenticatedDatasetsRouteImport } from './routes/_authenticated/datasets'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedExercisesIndexRouteImport } from './routes/_authenticated/exercises.index'
+import { Route as AuthenticatedExercisesNewRouteImport } from './routes/_authenticated/exercises.new'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -47,6 +49,11 @@ const AuthenticatedExercisesRoute = AuthenticatedExercisesRouteImport.update({
   path: '/exercises',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDatasetsRoute = AuthenticatedDatasetsRouteImport.update({
+  id: '/datasets',
+  path: '/datasets',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -58,22 +65,32 @@ const AuthenticatedExercisesIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedExercisesRoute,
   } as any)
+const AuthenticatedExercisesNewRoute =
+  AuthenticatedExercisesNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedExercisesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/datasets': typeof AuthenticatedDatasetsRoute
   '/exercises': typeof AuthenticatedExercisesRouteWithChildren
   '/history': typeof AuthenticatedHistoryRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/exercises/new': typeof AuthenticatedExercisesNewRoute
   '/exercises/': typeof AuthenticatedExercisesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/datasets': typeof AuthenticatedDatasetsRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/exercises/new': typeof AuthenticatedExercisesNewRoute
   '/exercises': typeof AuthenticatedExercisesIndexRoute
 }
 export interface FileRoutesById {
@@ -82,9 +99,11 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/datasets': typeof AuthenticatedDatasetsRoute
   '/_authenticated/exercises': typeof AuthenticatedExercisesRouteWithChildren
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/exercises/new': typeof AuthenticatedExercisesNewRoute
   '/_authenticated/exercises/': typeof AuthenticatedExercisesIndexRoute
 }
 export interface FileRouteTypes {
@@ -93,21 +112,33 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/datasets'
     | '/exercises'
     | '/history'
     | '/settings'
+    | '/exercises/new'
     | '/exercises/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/history' | '/settings' | '/exercises'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/datasets'
+    | '/history'
+    | '/settings'
+    | '/exercises/new'
+    | '/exercises'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/datasets'
     | '/_authenticated/exercises'
     | '/_authenticated/history'
     | '/_authenticated/settings'
+    | '/_authenticated/exercises/new'
     | '/_authenticated/exercises/'
   fileRoutesById: FileRoutesById
 }
@@ -161,6 +192,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExercisesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/datasets': {
+      id: '/_authenticated/datasets'
+      path: '/datasets'
+      fullPath: '/datasets'
+      preLoaderRoute: typeof AuthenticatedDatasetsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -175,15 +213,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExercisesIndexRouteImport
       parentRoute: typeof AuthenticatedExercisesRoute
     }
+    '/_authenticated/exercises/new': {
+      id: '/_authenticated/exercises/new'
+      path: '/new'
+      fullPath: '/exercises/new'
+      preLoaderRoute: typeof AuthenticatedExercisesNewRouteImport
+      parentRoute: typeof AuthenticatedExercisesRoute
+    }
   }
 }
 
 interface AuthenticatedExercisesRouteChildren {
+  AuthenticatedExercisesNewRoute: typeof AuthenticatedExercisesNewRoute
   AuthenticatedExercisesIndexRoute: typeof AuthenticatedExercisesIndexRoute
 }
 
 const AuthenticatedExercisesRouteChildren: AuthenticatedExercisesRouteChildren =
   {
+    AuthenticatedExercisesNewRoute: AuthenticatedExercisesNewRoute,
     AuthenticatedExercisesIndexRoute: AuthenticatedExercisesIndexRoute,
   }
 
@@ -194,6 +241,7 @@ const AuthenticatedExercisesRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDatasetsRoute: typeof AuthenticatedDatasetsRoute
   AuthenticatedExercisesRoute: typeof AuthenticatedExercisesRouteWithChildren
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -201,6 +249,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDatasetsRoute: AuthenticatedDatasetsRoute,
   AuthenticatedExercisesRoute: AuthenticatedExercisesRouteWithChildren,
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
