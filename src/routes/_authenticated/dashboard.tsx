@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { listAttempts, listDueReviews } from "@/lib/api/attempts.functions";
 import { listExercises } from "@/lib/api/exercises.functions";
-import { getOnboardingStatus, getStarterSuggestions } from "@/lib/onboarding.functions";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Dumbbell, Flame, Sparkles } from "lucide-react";
 
@@ -20,8 +19,6 @@ function Dashboard() {
   const attemptsFn = useServerFn(listAttempts);
   const dueFn = useServerFn(listDueReviews);
   const exFn = useServerFn(listExercises);
-  const onbFn = useServerFn(getOnboardingStatus);
-  const suggestFn = useServerFn(getStarterSuggestions);
 
   const attempts = useQuery({ queryKey: ["attempts"], queryFn: () => attemptsFn() });
   const due = useQuery({ queryKey: ["reviews-due"], queryFn: () => dueFn() });
@@ -29,19 +26,8 @@ function Dashboard() {
     queryKey: ["exercises", "public"],
     queryFn: () => exFn({ data: { scope: "public" } }),
   });
-  const onboarding = useQuery({ queryKey: ["onboarding-status"], queryFn: () => onbFn() });
 
-  const suggestMut = useMutation({
-    mutationFn: async () => {
-      const topics: string[] = onboarding.data?.profile?.preferred_topics ?? [];
-      const safeTopics = topics.length > 0 ? topics : ["regression"];
-      return suggestFn({ data: { topics: safeTopics } });
-    },
-  });
-
-  const suggested =
-    suggestMut.data?.suggestions ??
-    (exercises.data?.exercises ?? []).slice(0, 3);
+  const suggested = (exercises.data?.exercises ?? []).slice(0, 3);
 
 
   const last7 = (attempts.data?.attempts ?? []).filter(
@@ -125,13 +111,11 @@ function Dashboard() {
                 .
               </div>
             )}
-            <Button
-              className="w-full mt-3 gap-2"
-              disabled={suggestMut.isPending || onboarding.isLoading}
-              onClick={() => suggestMut.mutate()}
-            >
-              <Sparkles className="h-4 w-4" />
-              {suggestMut.isPending ? "Picking…" : "Suggest me three exercises based on my goals"}
+            <Button asChild className="w-full mt-3 gap-2">
+              <Link to="/welcome">
+                <Sparkles className="h-4 w-4" />
+                Suggest me three exercises based on my goals
+              </Link>
             </Button>
           </CardContent>
 
