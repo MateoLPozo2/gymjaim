@@ -112,7 +112,7 @@ function Dashboard() {
               </div>
             )}
             <Button asChild className="w-full mt-3 gap-2">
-              <Link to="/welcome">
+              <Link to="/welcome" search={{ force: true }}>
                 <Sparkles className="h-4 w-4" />
                 Suggest me three exercises based on my goals
               </Link>
