@@ -42,6 +42,7 @@ type Suggestion = {
 function WelcomePage() {
   const navigate = useNavigate();
   const router = useRouter();
+  const { force } = Route.useSearch();
   const statusFn = useServerFn(getOnboardingStatus);
   const saveFn = useServerFn(saveOnboarding);
   const suggestFn = useServerFn(getStarterSuggestions);
@@ -67,12 +68,13 @@ function WelcomePage() {
     return () => clearTimeout(t);
   }, [step]);
 
-  // Skip flow if already onboarded and no re-show flag
+  // Skip flow if already onboarded — unless the user explicitly asked to re-run it
   useEffect(() => {
+    if (force) return;
     if (status.data && !status.data.needsWelcome) {
       navigate({ to: "/dashboard", replace: true });
     }
-  }, [status.data, navigate]);
+  }, [status.data, navigate, force]);
 
   // Pre-fill from existing profile if re-running
   useEffect(() => {
