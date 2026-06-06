@@ -135,7 +135,6 @@ function Dashboard() {
             </Button>
           </CardContent>
 
-          </CardContent>
         </Card>
       </div>
     </div>
