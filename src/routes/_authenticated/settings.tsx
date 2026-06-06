@@ -10,6 +10,7 @@ import {
   processDueReviews,
 } from "@/lib/api/attempts.functions";
 import { listMyDatasets } from "@/lib/api/datasets.functions";
+import { setWelcomeOnNextLogin, getOnboardingStatus } from "@/lib/onboarding.functions";
 import { VOICE_COACH_STORAGE_KEY } from "@/hooks/use-voice-coach";
 import { parseRecipientEmails } from "@/lib/reviews/parse-recipient-emails";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
