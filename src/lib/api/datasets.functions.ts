@@ -89,3 +89,49 @@ export const getDatasetDetail = createServerFn({ method: "POST" })
     }
     return { dataset: ds, csvUrl };
   });
+
+const ProfileUploadInput = z.object({
+  csv_text: z.string().min(1).max(5 * 1024 * 1024),
+  filename: z.string().min(1).max(200).default("upload.csv"),
+});
+
+export const profileDatasetUpload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => ProfileUploadInput.parse(d))
+  .handler(async ({ data }) => {
+    const apiUrl = process.env.DATASET_API_URL;
+    if (apiUrl) {
+      try {
+        const form = new FormData();
+        form.append(
+          "file",
+          new Blob([data.csv_text], { type: "text/csv" }),
+          data.filename,
+        );
+        const res = await fetch(`${apiUrl.replace(/\/$/, "")}/datasets/profile`, {
+          method: "POST",
+          body: form,
+        });
+        if (res.ok) return { profile: await res.json() };
+        const err = await res.text();
+        throw new Error(err || `Profile API returned ${res.status}`);
+      } catch (e) {
+        console.warn("[profileDatasetUpload] FastAPI fallback:", e);
+      }
+    }
+    const { profileCsvLocally } = await import("@/lib/datasets/profile-local");
+    return { profile: profileCsvLocally(data.csv_text) };
+  });
+
+export const listMyDatasets = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("datasets")
+      .select("id, name, description, columns, created_at, is_public")
+      .eq("owner_id", context.userId)
+      .eq("is_builtin", false)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return { datasets: data ?? [] };
+  });

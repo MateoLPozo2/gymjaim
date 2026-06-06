@@ -12,4 +12,12 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    optimizeDeps: {
+      exclude: ["pyodide"],
+    },
+    worker: {
+      format: "es",
+    },
+  },
 });

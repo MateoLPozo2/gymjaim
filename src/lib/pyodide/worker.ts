@@ -1,14 +1,18 @@
 // Pyodide web-worker bootstrap. Loads pandas/numpy/scikit-learn on first init,
-// then executes user code with `df` pre-bound. Returns stdout, the value of
-// the last expression (when possible), and the updated DataFrame as CSV so the
-// main thread can recompute slopes against the user's mutations.
+// then executes user code with `df` pre-bound.
 /// <reference lib="webworker" />
 
 declare const self: DedicatedWorkerGlobalScope;
 
-interface InitMsg { type: "init" }
+interface InitMsg {
+  type: "init";
+}
 interface LoadDatasetMsg {
   type: "load";
+  csv: string;
+}
+interface ResetMsg {
+  type: "reset";
   csv: string;
 }
 interface ExecMsg {
@@ -16,15 +20,14 @@ interface ExecMsg {
   code: string;
   id: number;
 }
-interface ResetMsg {
-  type: "reset";
-  csv: string;
+interface PeekMsg {
+  type: "peek";
+  id: number;
+  n?: number;
 }
 
-type In = InitMsg | LoadDatasetMsg | ExecMsg | ResetMsg;
+type In = InitMsg | LoadDatasetMsg | ResetMsg | ExecMsg | PeekMsg;
 
-interface OutInit { type: "ready" }
-interface OutLoaded { type: "loaded" }
 interface OutExec {
   type: "exec_result";
   id: number;
@@ -36,21 +39,73 @@ interface OutExec {
   dfCsv: string;
   error?: string;
 }
-type Out = OutInit | OutLoaded | OutExec;
 
-// Loaded asynchronously from the CDN. We can't bundle pyodide in this stack.
+interface OutPeek {
+  type: "peek_result";
+  id: number;
+  ok: boolean;
+  tableJson: string | null;
+  error?: string;
+}
+
+const PYODIDE_BASE = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/";
+const PYODIDE_INDEX = PYODIDE_BASE;
+const PYODIDE_CDN = `${PYODIDE_BASE}pyodide.mjs`;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pyodide: any = null;
 let dfLoaded = false;
 
 async function ensurePyodide() {
   if (pyodide) return pyodide;
-  (self as any).importScripts(
-    "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js",
-  );
-  pyodide = await (self as any).loadPyodide({
-    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/",
-  });
+  // #region agent log
+  fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
+    body: JSON.stringify({
+      sessionId: "6cf81e",
+      runId: "pre-fix",
+      hypothesisId: "B",
+      location: "worker.ts:ensurePyodide:start",
+      message: "ensurePyodide starting",
+      data: { indexURL: PYODIDE_INDEX, cdn: PYODIDE_CDN, workerHref: self.location.href },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+  const { loadPyodide } = await import(/* @vite-ignore */ PYODIDE_CDN);
+  pyodide = await loadPyodide({ indexURL: PYODIDE_INDEX });
+  // #region agent log
+  fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
+    body: JSON.stringify({
+      sessionId: "6cf81e",
+      runId: "pre-fix",
+      hypothesisId: "B",
+      location: "worker.ts:ensurePyodide:loaded",
+      message: "loadPyodide done, loading packages",
+      data: { version: pyodide.version },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
   await pyodide.loadPackage(["pandas", "numpy", "scikit-learn"]);
+  // #region agent log
+  fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
+    body: JSON.stringify({
+      sessionId: "6cf81e",
+      runId: "pre-fix",
+      hypothesisId: "C",
+      location: "worker.ts:ensurePyodide:packages",
+      message: "packages loaded",
+      data: { packages: ["pandas", "numpy", "scikit-learn"] },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
   await pyodide.runPythonAsync(`
 import io, json, contextlib, traceback
 import pandas as pd
@@ -59,35 +114,96 @@ import numpy as np
   return pyodide;
 }
 
+async function loadCsvIntoDf(csv: string) {
+  const py = await ensurePyodide();
+  py.globals.set("__csv_text", csv);
+  await py.runPythonAsync(`df = pd.read_csv(io.StringIO(__csv_text))`);
+  dfLoaded = true;
+}
+
 self.onmessage = async (e: MessageEvent<In>) => {
   const msg = e.data;
   try {
     if (msg.type === "init") {
       try {
         await ensurePyodide();
-        (self as any).postMessage({ type: "ready" });
+        // #region agent log
+        fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
+          body: JSON.stringify({
+            sessionId: "6cf81e",
+            runId: "pre-fix",
+            hypothesisId: "E",
+            location: "worker.ts:init:ready",
+            message: "init complete, posting ready",
+            data: {},
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+        self.postMessage({ type: "ready" });
       } catch (err) {
-        (self as any).postMessage({
+        // #region agent log
+        fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
+          body: JSON.stringify({
+            sessionId: "6cf81e",
+            runId: "pre-fix",
+            hypothesisId: "B,C,E",
+            location: "worker.ts:init:error",
+            message: "init failed",
+            data: { error: err instanceof Error ? err.message : String(err) },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+        self.postMessage({
           type: "init_error",
           error: err instanceof Error ? err.message : String(err),
         });
       }
       return;
     }
+
     if (msg.type === "load" || msg.type === "reset") {
-      const py = await ensurePyodide();
-      py.globals.set("__csv_text", msg.csv);
-      await py.runPythonAsync(`
-df = pd.read_csv(io.StringIO(__csv_text))
-`);
-      dfLoaded = true;
-      (self as any).postMessage({ type: "loaded" } satisfies Out);
+      await loadCsvIntoDf(msg.csv);
+      self.postMessage({ type: "loaded" });
       return;
     }
+
+    if (msg.type === "peek") {
+      const py = await ensurePyodide();
+      if (!dfLoaded) {
+        self.postMessage({
+          type: "peek_result",
+          id: msg.id,
+          ok: false,
+          tableJson: null,
+          error: "Dataset not loaded yet",
+        } satisfies OutPeek);
+        return;
+      }
+      const n = msg.n ?? 10;
+      py.globals.set("__peek_n", n);
+      await py.runPythonAsync(`
+__peek_json = df.head(__peek_n).to_json(orient="split", default_handler=str)
+`);
+      const tableJson = py.globals.get("__peek_json") ?? null;
+      self.postMessage({
+        type: "peek_result",
+        id: msg.id,
+        ok: true,
+        tableJson: tableJson === null ? null : String(tableJson),
+      } satisfies OutPeek);
+      return;
+    }
+
     if (msg.type === "exec") {
       const py = await ensurePyodide();
       if (!dfLoaded) {
-        (self as any).postMessage({
+        self.postMessage({
           type: "exec_result",
           id: msg.id,
           ok: false,
@@ -97,7 +213,7 @@ df = pd.read_csv(io.StringIO(__csv_text))
           tableJson: null,
           dfCsv: "",
           error: "Dataset not loaded yet",
-        } satisfies Out);
+        } satisfies OutExec);
         return;
       }
       py.globals.set("__user_code", msg.code ?? "");
@@ -147,12 +263,10 @@ __df_csv = df.to_csv(index=False)
       const stdout = py.globals.get("__stdout") ?? "";
       const resultIsTable = !!py.globals.get("__result_is_table");
       const tableJson = py.globals.get("__table_json") ?? null;
-      const resultText = resultIsTable
-        ? null
-        : (py.globals.get("__result") ?? null);
+      const resultText = resultIsTable ? null : (py.globals.get("__result") ?? null);
       const dfCsv = py.globals.get("__df_csv") ?? "";
       const error = py.globals.get("__error") ?? undefined;
-      (self as any).postMessage({
+      self.postMessage({
         type: "exec_result",
         id: msg.id,
         ok: !error,
@@ -162,20 +276,31 @@ __df_csv = df.to_csv(index=False)
         tableJson: tableJson === null ? null : String(tableJson),
         dfCsv: String(dfCsv),
         error: error ? String(error) : undefined,
-      } satisfies Out);
+      } satisfies OutExec);
     }
   } catch (err) {
-    (self as any).postMessage({
-      type: "exec_result",
-      id: (msg as ExecMsg).id ?? -1,
-      ok: false,
-      stdout: "",
-      resultText: null,
-      resultIsTable: false,
-      tableJson: null,
-      dfCsv: "",
-      error: err instanceof Error ? err.stack || err.message : String(err),
-    } satisfies Out);
+    const id = "id" in msg ? (msg as ExecMsg | PeekMsg).id : -1;
+    if (msg.type === "peek") {
+      self.postMessage({
+        type: "peek_result",
+        id,
+        ok: false,
+        tableJson: null,
+        error: err instanceof Error ? err.stack || err.message : String(err),
+      } satisfies OutPeek);
+    } else {
+      self.postMessage({
+        type: "exec_result",
+        id,
+        ok: false,
+        stdout: "",
+        resultText: null,
+        resultIsTable: false,
+        tableJson: null,
+        dfCsv: "",
+        error: err instanceof Error ? err.stack || err.message : String(err),
+      } satisfies OutExec);
+    }
   }
 };
 

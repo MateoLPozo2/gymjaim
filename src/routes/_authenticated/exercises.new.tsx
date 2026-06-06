@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect, useRef } from "react";
-import { listDatasets, createDataset } from "@/lib/api/datasets.functions";
+import { listDatasets, createDataset, profileDatasetUpload } from "@/lib/api/datasets.functions";
 import { createExercise } from "@/lib/api/exercises.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { parseCsv, numericColumns } from "@/lib/csv";
 import { toast } from "sonner";
 import { Upload, ArrowLeft } from "lucide-react";
+import { DatasetUploadPreview } from "@/components/datasets/DatasetUploadPreview";
+import type { DatasetProfile } from "@/lib/datasets/profile-local";
 
 export const Route = createFileRoute("/_authenticated/exercises/new")({
   head: () => ({ meta: [{ title: "New exercise — GymJaim" }] }),
@@ -26,6 +27,7 @@ function NewExercise() {
   const listFn = useServerFn(listDatasets);
   const createDsFn = useServerFn(createDataset);
   const createExFn = useServerFn(createExercise);
+  const profileFn = useServerFn(profileDatasetUpload);
   const datasets = useQuery({ queryKey: ["datasets"], queryFn: () => listFn() });
 
   const [datasetId, setDatasetId] = useState<string>("");
@@ -98,7 +100,11 @@ function NewExercise() {
               ))}
             </SelectContent>
           </Select>
-          <UploadInline onCreated={(id) => setDatasetId(id)} createDsFn={createDsFn} />
+          <UploadInline
+            onCreated={(id) => setDatasetId(id)}
+            createDsFn={createDsFn}
+            profileFn={profileFn}
+          />
         </CardContent>
       </Card>
 
@@ -192,13 +198,18 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function UploadInline({
   onCreated,
   createDsFn,
+  profileFn,
 }: {
   onCreated: (id: string) => void;
-  createDsFn: any;
+  createDsFn: (args: { data: Parameters<typeof createDataset>[0] extends never ? never : any }) => Promise<{ id: string }>;
+  profileFn: (args: { data: { csv_text: string; filename: string } }) => Promise<{ profile: DatasetProfile }>;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
+  const [profile, setProfile] = useState<DatasetProfile | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingText, setPendingText] = useState<string | null>(null);
 
   async function onPick(file: File) {
     if (file.size > 5 * 1024 * 1024) {
@@ -206,33 +217,51 @@ function UploadInline({
       return;
     }
     setBusy(true);
+    setProfile(null);
     try {
       const text = await file.text();
-      const parsed = parseCsv(text);
-      if (parsed.columns.length === 0) throw new Error("Empty CSV");
-      const numCols = numericColumns(parsed);
-      if (numCols.length < 2) throw new Error("Need at least 2 numeric columns");
+      const { profile: p } = await profileFn({
+        data: { csv_text: text, filename: file.name },
+      });
+      setProfile(p as DatasetProfile);
+      setPendingFile(file);
+      setPendingText(text);
+      if (!name) setName(file.name.replace(/\.csv$/i, ""));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Could not profile CSV");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onConfirmUpload() {
+    if (!pendingFile || !pendingText || !profile) return;
+    setBusy(true);
+    try {
       const { data: userData } = await supabase.auth.getUser();
       const uid = userData.user?.id;
       if (!uid) throw new Error("Not signed in");
-      const path = `${uid}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const path = `${uid}/${Date.now()}-${pendingFile.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error: upErr } = await supabase.storage
         .from("datasets")
-        .upload(path, file, { contentType: "text/csv", upsert: false });
+        .upload(path, pendingFile, { contentType: "text/csv", upsert: false });
       if (upErr) throw upErr;
       const { id } = await createDsFn({
         data: {
-          name: name || file.name.replace(/\.csv$/i, ""),
+          name: name || pendingFile.name.replace(/\.csv$/i, ""),
           description: `Uploaded ${new Date().toLocaleDateString()}`,
           storage_path: path,
-          columns: parsed.columns,
+          columns: profile.column_names,
           is_public: false,
         },
       });
       toast.success("Dataset uploaded");
+      setProfile(null);
+      setPendingFile(null);
+      setPendingText(null);
       onCreated(id);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Upload failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setBusy(false);
     }
@@ -263,9 +292,30 @@ function UploadInline({
           disabled={busy}
           onClick={() => fileRef.current?.click()}
         >
-          <Upload className="h-4 w-4" /> {busy ? "Uploading…" : "Choose CSV"}
+          <Upload className="h-4 w-4" /> {busy && !profile ? "Profiling…" : "Choose CSV"}
         </Button>
       </div>
+      {profile && (
+        <>
+          <DatasetUploadPreview profile={profile} />
+          <div className="mt-3 flex gap-2 justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setProfile(null);
+                setPendingFile(null);
+                setPendingText(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button size="sm" disabled={busy} onClick={onConfirmUpload}>
+              {busy ? "Uploading…" : "Confirm upload"}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
