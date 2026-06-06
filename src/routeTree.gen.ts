@@ -20,6 +20,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedExercisesIndexRouteImport } from './routes/_authenticated/exercises.index'
 import { Route as AuthenticatedExercisesNewRouteImport } from './routes/_authenticated/exercises.new'
 import { Route as AuthenticatedExercisesIdRouteImport } from './routes/_authenticated/exercises.$id'
+import { Route as ApiPublicCronSendDueReviewsRouteImport } from './routes/api/public/cron/send-due-reviews'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -78,6 +79,12 @@ const AuthenticatedExercisesIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedExercisesRoute,
   } as any)
+const ApiPublicCronSendDueReviewsRoute =
+  ApiPublicCronSendDueReviewsRouteImport.update({
+    id: '/api/public/cron/send-due-reviews',
+    path: '/api/public/cron/send-due-reviews',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/exercises/$id': typeof AuthenticatedExercisesIdRoute
   '/exercises/new': typeof AuthenticatedExercisesNewRoute
   '/exercises/': typeof AuthenticatedExercisesIndexRoute
+  '/api/public/cron/send-due-reviews': typeof ApiPublicCronSendDueReviewsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -101,6 +109,7 @@ export interface FileRoutesByTo {
   '/exercises/$id': typeof AuthenticatedExercisesIdRoute
   '/exercises/new': typeof AuthenticatedExercisesNewRoute
   '/exercises': typeof AuthenticatedExercisesIndexRoute
+  '/api/public/cron/send-due-reviews': typeof ApiPublicCronSendDueReviewsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,6 +124,7 @@ export interface FileRoutesById {
   '/_authenticated/exercises/$id': typeof AuthenticatedExercisesIdRoute
   '/_authenticated/exercises/new': typeof AuthenticatedExercisesNewRoute
   '/_authenticated/exercises/': typeof AuthenticatedExercisesIndexRoute
+  '/api/public/cron/send-due-reviews': typeof ApiPublicCronSendDueReviewsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/exercises/$id'
     | '/exercises/new'
     | '/exercises/'
+    | '/api/public/cron/send-due-reviews'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/exercises/$id'
     | '/exercises/new'
     | '/exercises'
+    | '/api/public/cron/send-due-reviews'
   id:
     | '__root__'
     | '/'
@@ -153,12 +165,14 @@ export interface FileRouteTypes {
     | '/_authenticated/exercises/$id'
     | '/_authenticated/exercises/new'
     | '/_authenticated/exercises/'
+    | '/api/public/cron/send-due-reviews'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicCronSendDueReviewsRoute: typeof ApiPublicCronSendDueReviewsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -240,6 +254,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExercisesIdRouteImport
       parentRoute: typeof AuthenticatedExercisesRoute
     }
+    '/api/public/cron/send-due-reviews': {
+      id: '/api/public/cron/send-due-reviews'
+      path: '/api/public/cron/send-due-reviews'
+      fullPath: '/api/public/cron/send-due-reviews'
+      preLoaderRoute: typeof ApiPublicCronSendDueReviewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -284,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicCronSendDueReviewsRoute: ApiPublicCronSendDueReviewsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
