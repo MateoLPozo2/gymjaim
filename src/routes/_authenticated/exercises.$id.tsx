@@ -9,6 +9,7 @@ import { getBuiltinCsv } from "@/lib/datasets/builtin";
 import { usePyodide } from "@/hooks/use-pyodide";
 import { parseCsv, getColumn, dropMissingRows, ParsedCsv } from "@/lib/csv";
 import { buildPlan, Difficulty } from "@/lib/missing-values";
+import { buildSampleSolutions } from "@/lib/exercise-solutions";
 import { mean, median, ordinaryLeastSquares } from "@/lib/stats";
 import { randomSeed } from "@/lib/seeded-random";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import {
   ZAxis,
   ComposedChart,
 } from "recharts";
-import { ArrowLeft, Check, Play, RotateCw } from "lucide-react";
+import { ArrowLeft, Check, Play, RotateCw, Lightbulb, Copy } from "lucide-react";
 import Editor from "@monaco-editor/react";
 
 const RunnerSearch = z.object({ seed: z.string().optional() });
