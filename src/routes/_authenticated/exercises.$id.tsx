@@ -97,8 +97,15 @@ function Runner({
   const [rawCsv, setRawCsv] = useState<string | null>(null);
   const [plan, setPlan] = useState<ReturnType<typeof buildPlan> | null>(null);
   const [workingCsv, setWorkingCsv] = useState<ParsedCsv | null>(null);
-  const [code, setCode] = useState<string>(
-    `# df has the dataset with NaNs in '${exercise.target_col}'.\n# Try imputing them so the regression of '${exercise.target_col}' on '${exercise.y_col}'\n# matches the un-deleted ground truth.\n\ndf['${exercise.target_col}'] = df['${exercise.target_col}'].fillna(\n    df['${exercise.target_col}'].mean()\n)\n\ndf.head()\n`,
+  const starterCode = useMemo(
+    () =>
+      `# df has the dataset with NaNs in '${exercise.target_col}'.\n# Try imputing them so the regression of '${exercise.target_col}' on '${exercise.y_col}'\n# matches the un-deleted ground truth.\n\ndf['${exercise.target_col}'] = df['${exercise.target_col}'].fillna(\n    df['${exercise.target_col}'].mean()\n)\n\ndf.head()\n`,
+    [exercise.target_col, exercise.y_col],
+  );
+  const [code, setCode] = useState<string>(starterCode);
+  const sampleSolutions = useMemo(
+    () => buildSampleSolutions(exercise.target_col, exercise.y_col, exercise.condition_col),
+    [exercise.target_col, exercise.y_col, exercise.condition_col],
   );
   const [output, setOutput] = useState<{ stdout: string; resultText: string | null; tableJson: string | null; error?: string } | null>(null);
   const [running, setRunning] = useState(false);
