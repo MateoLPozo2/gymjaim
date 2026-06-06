@@ -44,10 +44,10 @@ let dfLoaded = false;
 
 async function ensurePyodide() {
   if (pyodide) return pyodide;
-  // @ts-expect-error - dynamic import from CDN
-  self.importScripts("https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js");
-  // @ts-expect-error - loadPyodide is attached to the global by the script
-  pyodide = await self.loadPyodide({
+  (self as any).importScripts(
+    "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js",
+  );
+  pyodide = await (self as any).loadPyodide({
     indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/",
   });
   await pyodide.loadPackage(["pandas", "numpy", "scikit-learn"]);
