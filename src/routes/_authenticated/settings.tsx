@@ -10,6 +10,7 @@ import {
   processDueReviews,
 } from "@/lib/api/attempts.functions";
 import { listMyDatasets } from "@/lib/api/datasets.functions";
+import { setWelcomeOnNextLogin, getOnboardingStatus } from "@/lib/onboarding.functions";
 import { VOICE_COACH_STORAGE_KEY } from "@/hooks/use-voice-coach";
 import { parseRecipientEmails } from "@/lib/reviews/parse-recipient-emails";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
@@ -38,10 +39,21 @@ function SettingsPage() {
   const reviewsFn = useServerFn(listScheduledReviews);
   const scheduleFn = useServerFn(scheduleTestReview);
   const processFn = useServerFn(processDueReviews);
+  const onbStatusFn = useServerFn(getOnboardingStatus);
+  const setWelcomeFn = useServerFn(setWelcomeOnNextLogin);
 
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => profileFn() });
   const myDatasets = useQuery({ queryKey: ["my-datasets"], queryFn: () => myDsFn() });
   const reviews = useQuery({ queryKey: ["scheduled-reviews"], queryFn: () => reviewsFn() });
+  const onboarding = useQuery({ queryKey: ["onboarding-status"], queryFn: () => onbStatusFn() });
+
+  const welcomeMut = useMutation({
+    mutationFn: (enabled: boolean) => setWelcomeFn({ data: { enabled } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["onboarding-status"] });
+      toast.success("Saved");
+    },
+  });
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [recipientInput, setRecipientInput] = useState("");
@@ -241,6 +253,32 @@ function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="font-display text-lg">Welcome screen</CardTitle>
+          <CardDescription>
+            Replay the intro and re-pick your role and topics on your next sign-in.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between rounded-lg border border-border p-4">
+            <div>
+              <p className="font-medium text-sm">Show welcome on next login</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Your saved preferences will be pre-filled.
+              </p>
+            </div>
+            <Switch
+              checked={!!onboarding.data?.profile?.welcome_on_next_login}
+              disabled={onboarding.isLoading || welcomeMut.isPending}
+              onCheckedChange={(v) => welcomeMut.mutate(v)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+
 
       <Card className="mt-6">
         <CardHeader>

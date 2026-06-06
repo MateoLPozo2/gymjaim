@@ -1,54 +1,82 @@
-# Plan: Functional runner, solution cards, dataset detail view
+# Onboarding Welcome Flow
 
-## 1. Fix the exercise runner (Run / Reset)
+A one-time, slide-animated welcome that appears on first sign-in, collects role + topic preferences, and recommends 3 exercises before the user lands on the dashboard.
 
-The runner already wires `onRun` → `pyodide.exec(code)` and `onReset` → `pyodide.resetDataset(...)`, but it has two real bugs that make it feel broken:
+## Behavior
 
-- **Worker boot can hang silently on the Worker SSR runtime.** The worker uses `new URL("../lib/pyodide/worker.ts", import.meta.url)` which is fine in browser, but the route is wrapped in SSR. We'll guard the `usePyodide` effect with `typeof window !== "undefined"` and only construct the Worker in the browser.
-- **Run button is gated on `pyodide.status === "loading"`** but `status` starts as `"idle"` before the effect runs, and after a successful `loadDataset` the status is `"dataset"` — Run already works there, but error states are swallowed. We'll:
-  - Surface `pyodide.error` in the status pill.
-  - Disable Run only when status is `idle | loading | error`.
-  - Add a one-line "loaded N rows × M cols" confirmation under the editor once the dataset is in pandas.
-- **Reset** currently calls `resetDataset` with the working CSV (the one with NaNs) — correct, but we also reset the editor's code back to the starter snippet so users can retry from scratch.
+1. User signs in → the `_authenticated` layout checks `profiles.onboarding_completed_at`.
+2. If null, redirect to `/welcome`. Otherwise proceed to `/dashboard` (or wherever they navigated).
+3. `/welcome` plays a 3-step slide-animated flow, then writes preferences + marks onboarding complete and redirects to the dashboard.
+4. Subsequent sign-ins skip `/welcome` entirely. Reachable later only from Settings (“Re-run intro”) — out of scope for this round.
 
-No backend changes needed for this section.
+## Steps in the popup (one screen at a time, slide transition)
 
-## 2. "Expected solutions" cards on the runner
+**Step 1 — Hello (Apple-style boot vibe)**
 
-Add a new collapsible section under the editor titled **"Peek at sample solutions"** with 3 cards (mean fill, median fill, conditional group fill). Each card shows:
+- Centered, soft fade + slow scale "Hello." in display type, followed by the user's first name if available.
+- A subtle gradient/aurora background; respects `prefers-reduced-motion`.
+- Auto-advance after ~2.5s or on click/Enter.
+- Make sure to sue the same font that we have used on the website so far.
 
-- Short title + one-line description of the strategy
-- Read-only Python snippet (using the exercise's `target_col`, `y_col`, `condition_col`)
-- **"Load into editor"** button that copies the snippet into the Monaco editor
+**Step 2 — Who are you? (role + goals)**
 
-Snippets are generated client-side from the exercise's column metadata — no DB writes, no new server functions. Lives in a new `src/lib/exercise-solutions.ts` helper.
+- Role dropdown (single select, required):
+  - Data Analyst, Business Analyst, Junior Data Scientist, Research Analyst, Market Research Analyst, Operations Analyst, Product Analyst, Business Intelligence (BI) Analyst, Student, Other.
+  - If "Other" → mandatory free-text "Your role" field appears.
+- Goals: one short textarea, max 280 chars, optional.
+- Continue button disabled until role (and custom role text if Other) is filled.
 
-## 3. Dataset detail view
+**Step 3 — What do you want to practice?**
 
-Currently `/datasets` is a flat list. We'll add:
+- Multi-select of curriculum subtopics, grouped by category, min 1 required:
+  - Introduction: Data Types, Descriptive Statistics, Data Formats, Probability Distributions, Sample vs. Population, Data Storage and Imports
+  - Data Cleaning: Type Errors and Duplicate Values, Missing Values, Outlier Detection, Cleaning Strings, Data Transformation, Encoding Categorical Variables, Feature Selection
+  - Forecasting: Autoregressive Models, Moving Average Models, Exponential Smoothing, ARIMA Models, ARCH Models, Lag Length Selection, Seasonality, State-space Models, Forecast Evaluation
+  - Machine Learning: shown as a disabled "coming soon" group.
+- Submit → save preferences, compute 3 suggestions, advance.
 
-- A new route `src/routes/_authenticated/datasets.$id.tsx` (URL `/datasets/$id`) that shows:
-  - Dataset name, description, source, # rows, # columns
-  - **Variables table**: column name, inferred dtype (number/string/bool), non-null count, sample values, min/max/mean for numerics
-  - **Preview table**: first 20 rows
-  - For built-in seaborn datasets: a short canned blurb (origin + typical use) hard-coded in `src/lib/datasets/builtin-meta.ts` — we won't call Kaggle at runtime (no API key, would also require server-side fetching). I'll note this in the UI and we can add Kaggle later if you provide an API key.
-- A new server function `getDatasetDetail({ id })` in `src/lib/api/datasets.functions.ts` that returns the dataset row + a signed URL (for uploaded CSVs) so the page can parse columns/stats client-side using existing `parseCsv` + `src/lib/stats.ts`.
-- Make each card on `/datasets` a `<Link to="/datasets/$id">`.
+**Step 4 — Your starter set**
 
-## 4. Out of scope (ask before doing)
+- Show exactly 3 suggested exercises as cards (title, topic, difficulty badge), animated in sequentially.
+- Primary CTA "Start now" → opens the first exercise. Secondary "Go to dashboard" → `/dashboard`. Either way, onboarding is marked complete.
 
-- Live Kaggle metadata fetch (needs API key + server route).
-- Persisting "viewed sample solution" as a hint penalty on attempts.
-- Editor autocomplete for column names.
+## Suggestion logic (Filter + difficulty ramp)
 
-## Files
+- Pull from `exercises` filtered by `topic IN (selected_subtopics)`.
+- Order by difficulty asc (easy → medium → hard). If `exercises.difficulty` isn't already present, fall back to `created_at` asc and note this as a follow-up.
+- Pick 3: 1 easy, 1 medium, 1 hard when available; otherwise fill the gaps with the next-easiest remaining.
+- If fewer than 3 match, top up with the closest exercises from selected categories.
+- Cap to 3, no duplicates.
 
-- edit `src/hooks/use-pyodide.ts` — SSR guard + expose error
-- edit `src/routes/_authenticated/exercises.$id.tsx` — enable button logic, reset editor code, mount solution cards, dataset-loaded confirmation
-- new `src/lib/exercise-solutions.ts` — snippet generator
-- new `src/lib/datasets/builtin-meta.ts` — blurbs for 7 seaborn sets
-- new `src/lib/api/datasets.functions.ts` — add `getDatasetDetail`
-- new `src/routes/_authenticated/datasets.$id.tsx`
-- edit `src/routes/_authenticated/datasets.tsx` — link cards to detail page
+## Data model
 
-Confirm and I'll switch to build mode.
+New columns on `profiles` (migration):
+
+- `onboarding_completed_at timestamptz null`
+- `role text null`
+- `role_custom text null`
+- `goals text null`
+- `preferred_topics text[] not null default '{}'`
+
+No new table needed. RLS: existing self-row policies on `profiles` cover read/update.
+
+## Technical layout
+
+- Route: `src/routes/_authenticated/welcome.tsx` (full-screen, no app shell).
+- Gate: in the existing `_authenticated/route.tsx` (or sibling guard) compare `onboarding_completed_at` and `redirect({ to: "/welcome" })` when null and current path isn't `/welcome`.
+- Server functions in `src/lib/onboarding.functions.ts`:
+  - `getOnboardingStatus` — returns `{ completed, profile }`.
+  - `saveOnboarding` — validates with zod, writes role/role_custom/goals/preferred_topics, sets `onboarding_completed_at = now()`.
+  - `getStarterSuggestions` — takes selected topics, returns 3 exercises using the ramp logic above.
+- Components in `src/components/onboarding/`: `WelcomeHello.tsx`, `RoleStep.tsx`, `TopicsStep.tsx`, `SuggestionsStep.tsx`, `OnboardingShell.tsx` (handles slide transitions with framer-motion).
+- Curriculum constant in `src/lib/onboarding/curriculum.ts` (single source of truth for the grouped topic list).
+- Dev-mode sign-in: ensure the dev user's profile starts with `onboarding_completed_at = null` so the flow is testable; add a "Reset onboarding" button on Settings (small, dev-only acceptable) — optional.
+
+Additional Addition  
+One should be able to toggle the welcome page on the setting sfunction to be prompted for the welcome page.   
+  
+Out of scope (call out)
+
+- Editing preferences later from Settings UI (data is saved; UI can come next).
+- Re-suggesting exercises on later visits (this round only suggests once).
+- Difficulty column backfill: if `exercises.difficulty` is missing, suggestions degrade to `created_at` ordering until that's added.

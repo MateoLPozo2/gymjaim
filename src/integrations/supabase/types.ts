@@ -159,24 +159,42 @@ export type Database = {
           created_at: string
           display_name: string | null
           email_cadence_enabled: boolean
+          goals: string | null
           id: string
+          onboarding_completed_at: string | null
+          preferred_topics: string[]
+          role: string | null
+          role_custom: string | null
           updated_at: string
+          welcome_on_next_login: boolean
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email_cadence_enabled?: boolean
+          goals?: string | null
           id: string
+          onboarding_completed_at?: string | null
+          preferred_topics?: string[]
+          role?: string | null
+          role_custom?: string | null
           updated_at?: string
+          welcome_on_next_login?: boolean
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email_cadence_enabled?: boolean
+          goals?: string | null
           id?: string
+          onboarding_completed_at?: string | null
+          preferred_topics?: string[]
+          role?: string | null
+          role_custom?: string | null
           updated_at?: string
+          welcome_on_next_login?: boolean
         }
         Relationships: []
       }
