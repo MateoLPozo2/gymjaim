@@ -1,0 +1,1 @@
+create type public.exercise_difficulty as enum ('easy','medium','hard'); create type public.exercise_visibility as enum ('public','private');
