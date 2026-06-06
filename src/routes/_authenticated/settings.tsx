@@ -39,6 +39,8 @@ function SettingsPage() {
   const reviewsFn = useServerFn(listScheduledReviews);
   const scheduleFn = useServerFn(scheduleTestReview);
   const processFn = useServerFn(processDueReviews);
+  const onbStatusFn = useServerFn(getOnboardingStatus);
+  const setWelcomeFn = useServerFn(setWelcomeOnNextLogin);
 
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => profileFn() });
   const myDatasets = useQuery({ queryKey: ["my-datasets"], queryFn: () => myDsFn() });
