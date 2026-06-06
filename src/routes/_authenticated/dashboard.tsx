@@ -103,7 +103,7 @@ function Dashboard() {
             <CardDescription>From the public library.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {(exercises.data?.exercises ?? []).slice(0, 4).map((ex: any) => (
+            {suggested.map((ex: any) => (
               <div key={ex.id} className="flex items-center justify-between border-b border-border/60 pb-2.5 last:border-0">
                 <div>
                   <p className="text-sm font-medium">{ex.title}</p>
@@ -116,7 +116,7 @@ function Dashboard() {
                 </Button>
               </div>
             ))}
-            {(exercises.data?.exercises ?? []).length === 0 && (
+            {suggested.length === 0 && (
               <div className="text-sm text-muted-foreground">
                 No public exercises yet.{" "}
                 <Link to="/exercises/new" className="text-foreground underline underline-offset-2">
@@ -125,11 +125,16 @@ function Dashboard() {
                 .
               </div>
             )}
-            <Button asChild className="w-full mt-3 gap-2">
-              <Link to="/exercises/new">
-                <Plus className="h-4 w-4" /> Create a new exercise
-              </Link>
+            <Button
+              className="w-full mt-3 gap-2"
+              disabled={suggestMut.isPending || onboarding.isLoading}
+              onClick={() => suggestMut.mutate()}
+            >
+              <Sparkles className="h-4 w-4" />
+              {suggestMut.isPending ? "Picking…" : "Suggest me three exercises based on my goals"}
             </Button>
+          </CardContent>
+
           </CardContent>
         </Card>
       </div>
