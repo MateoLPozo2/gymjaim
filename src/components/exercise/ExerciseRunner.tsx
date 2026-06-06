@@ -45,6 +45,7 @@ export function ExerciseRunner({
   const [workingCsv, setWorkingCsv] = useState<ReturnType<typeof parseCsv> | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const datasetLoadedRef = useRef(false);
+  const datasetLoadingRef = useRef(false);
   const briefingPlayedRef = useRef(false);
 
   const starterCode = useMemo(
@@ -98,35 +99,39 @@ export function ExerciseRunner({
     };
   }, [exercise.id, datasetUrl, seed, exercise]);
 
-  // Reset pandas load flag when Pyodide reboots (e.g. retry).
+  // Reset pandas load flags when Pyodide reboots (e.g. retry).
   useEffect(() => {
     if (pyodide.status === "booting") {
       datasetLoadedRef.current = false;
+      datasetLoadingRef.current = false;
     }
   }, [pyodide.status]);
 
   // Load plan into Pyodide once when ready.
   useEffect(() => {
-    if (!plan || dataLoading || datasetLoadedRef.current) return;
+    if (!plan || dataLoading) return;
+    if (datasetLoadedRef.current || datasetLoadingRef.current) return;
     if (pyodide.status === "error") return;
     if (pyodide.status !== "ready" && pyodide.status !== "loaded") return;
 
+    datasetLoadingRef.current = true;
     let cancelled = false;
     (async () => {
       try {
         await pyodide.loadDataset(csvToString(plan.workingCsv));
         if (!cancelled) datasetLoadedRef.current = true;
       } catch (e: unknown) {
-        if (!cancelled)
+        if (!cancelled) {
+          datasetLoadingRef.current = false;
           toast.error(e instanceof Error ? e.message : "Failed to load dataset into pandas");
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-load when plan or boot status changes
-  }, [plan, dataLoading, pyodide.status === "ready" || pyodide.status === "loaded"]);
+  }, [plan, dataLoading, pyodide.status]);
 
   // Voice briefing on first load.
   useEffect(() => {
