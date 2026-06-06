@@ -14,7 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      _smoke_test: {
+        Row: {
+          id: number
+        }
+        Insert: {
+          id: number
+        }
+        Update: {
+          id?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

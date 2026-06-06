@@ -1,0 +1,1 @@
+create table if not exists public._smoke_test (id int primary key);
