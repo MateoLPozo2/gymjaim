@@ -46,29 +46,15 @@ export function usePyodide(): UsePyodide {
   const loadWaitersRef = useRef<Array<() => void>>([]);
   const idRef = useRef(0);
   const bootedRef = useRef(false);
+  const errorRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     bootedRef.current = false;
+    errorRef.current = null;
     setError(null);
     setStatus("booting");
-
-    // #region agent log
-    fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
-      body: JSON.stringify({
-        sessionId: "6cf81e",
-        runId: "pre-fix",
-        hypothesisId: "A",
-        location: "use-pyodide.ts:effect",
-        message: "creating pyodide worker",
-        data: { bootGeneration, href: window.location.href },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
 
     const worker = new Worker(new URL("../lib/pyodide/worker.ts", import.meta.url), {
       type: "module",
@@ -78,24 +64,9 @@ export function usePyodide(): UsePyodide {
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
-      // #region agent log
-      fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
-        body: JSON.stringify({
-          sessionId: "6cf81e",
-          runId: "pre-fix",
-          hypothesisId: msg.type === "init_error" ? "B,C,E" : msg.type === "ready" ? "E" : "D",
-          location: "use-pyodide.ts:onmessage",
-          message: "worker message",
-          data: { type: msg.type, error: msg.error ?? null },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       if (msg.type === "ready") {
         bootedRef.current = true;
-        setStatus((s) => (s === "loaded" ? "loaded" : "ready"));
+        setStatus((s) => (s === "loaded" || s === "loading_dataset" ? s : "ready"));
         bootWaitersRef.current.forEach((w) => w());
         bootWaitersRef.current = [];
       } else if (msg.type === "loaded") {
@@ -103,7 +74,9 @@ export function usePyodide(): UsePyodide {
         loadWaitersRef.current.forEach((w) => w());
         loadWaitersRef.current = [];
       } else if (msg.type === "init_error") {
-        setError(String(msg.error ?? "Failed to load Python runtime"));
+        const err = String(msg.error ?? "Failed to load Python runtime");
+        errorRef.current = err;
+        setError(err);
         setStatus("error");
         bootWaitersRef.current.forEach((w) => w());
         bootWaitersRef.current = [];
@@ -123,27 +96,9 @@ export function usePyodide(): UsePyodide {
     };
 
     worker.onerror = (e) => {
-      // #region agent log
-      fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
-        body: JSON.stringify({
-          sessionId: "6cf81e",
-          runId: "pre-fix",
-          hypothesisId: "A",
-          location: "use-pyodide.ts:onerror",
-          message: "worker script error",
-          data: {
-            message: e.message,
-            filename: e.filename,
-            lineno: e.lineno,
-            colno: e.colno,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
-      setError(formatWorkerError(e));
+      const err = formatWorkerError(e);
+      errorRef.current = err;
+      setError(err);
       setStatus("error");
     };
 
@@ -162,59 +117,81 @@ export function usePyodide(): UsePyodide {
     setBootGeneration((g) => g + 1);
   }, []);
 
-  const waitForBoot = () =>
-    new Promise<void>((resolve) => {
-      if (bootedRef.current) {
-        resolve();
-        return;
-      }
-      bootWaitersRef.current.push(resolve);
-    });
+  const waitForBoot = useCallback(
+    () =>
+      new Promise<void>((resolve) => {
+        if (bootedRef.current) {
+          resolve();
+          return;
+        }
+        bootWaitersRef.current.push(resolve);
+      }),
+    [],
+  );
 
-  const postLoad = (csv: string, kind: "load" | "reset") =>
-    new Promise<void>((resolve) => {
-      const send = () => {
-        setStatus("loading_dataset");
-        loadWaitersRef.current.push(() => resolve());
-        workerRef.current?.postMessage({ type: kind, csv });
-      };
-      if (bootedRef.current) send();
-      else bootWaitersRef.current.push(send);
-    });
+  const postLoad = useCallback(
+    (csv: string, kind: "load" | "reset") =>
+      new Promise<void>((resolve) => {
+        const send = () => {
+          setStatus("loading_dataset");
+          loadWaitersRef.current.push(() => resolve());
+          workerRef.current?.postMessage({ type: kind, csv });
+        };
+        if (bootedRef.current) send();
+        else bootWaitersRef.current.push(send);
+      }),
+    [],
+  );
+
+  const loadDataset = useCallback(
+    async (csv: string) => {
+      await waitForBoot();
+      if (!bootedRef.current) throw new Error(errorRef.current ?? "Python runtime failed to load");
+      await postLoad(csv, "load");
+    },
+    [waitForBoot, postLoad],
+  );
+
+  const resetDataset = useCallback(
+    async (csv: string) => {
+      await waitForBoot();
+      if (!bootedRef.current) throw new Error(errorRef.current ?? "Python runtime failed to load");
+      await postLoad(csv, "reset");
+    },
+    [waitForBoot, postLoad],
+  );
+
+  const exec = useCallback(
+    (code: string) =>
+      new Promise<ExecResult>((resolve) => {
+        const id = ++idRef.current;
+        execPendingRef.current.set(id, resolve);
+        workerRef.current?.postMessage({ type: "exec", code, id });
+      }),
+    [],
+  );
+
+  const peek = useCallback(
+    (n = 10) =>
+      new Promise<PeekResult>((resolve) => {
+        const id = ++idRef.current;
+        peekPendingRef.current.set(id, resolve);
+        workerRef.current?.postMessage({ type: "peek", id, n });
+      }),
+    [],
+  );
 
   return useMemo<UsePyodide>(
     () => ({
       status,
       error,
       isReady: status === "loaded",
-      loadDataset: async (csv) => {
-        await waitForBoot();
-        if (!bootedRef.current) {
-          throw new Error(error ?? "Python runtime failed to load");
-        }
-        await postLoad(csv, "load");
-      },
-      resetDataset: async (csv) => {
-        await waitForBoot();
-        if (!bootedRef.current) {
-          throw new Error(error ?? "Python runtime failed to load");
-        }
-        await postLoad(csv, "reset");
-      },
-      exec: (code) =>
-        new Promise((resolve) => {
-          const id = ++idRef.current;
-          execPendingRef.current.set(id, resolve);
-          workerRef.current?.postMessage({ type: "exec", code, id });
-        }),
-      peek: (n = 10) =>
-        new Promise((resolve) => {
-          const id = ++idRef.current;
-          peekPendingRef.current.set(id, resolve);
-          workerRef.current?.postMessage({ type: "peek", id, n });
-        }),
+      loadDataset,
+      resetDataset,
+      exec,
+      peek,
       retry,
     }),
-    [status, error, retry],
+    [status, error, loadDataset, resetDataset, exec, peek, retry],
   );
 }

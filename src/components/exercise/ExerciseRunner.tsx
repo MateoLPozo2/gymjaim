@@ -111,62 +111,12 @@ export function ExerciseRunner({
     if (pyodide.status === "error") return;
     if (pyodide.status !== "ready" && pyodide.status !== "loaded") return;
 
-    // #region agent log
-    fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
-      body: JSON.stringify({
-        sessionId: "6cf81e",
-        runId: "pre-fix",
-        hypothesisId: "D",
-        location: "ExerciseRunner.tsx:loadDatasetEffect",
-        message: "dataset load effect triggered",
-        data: {
-          pyodideStatus: pyodide.status,
-          pyodideError: pyodide.error,
-          rowCount: plan.workingCsv.rows.length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-
     let cancelled = false;
     (async () => {
       try {
         await pyodide.loadDataset(csvToString(plan.workingCsv));
-        // #region agent log
-        fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
-          body: JSON.stringify({
-            sessionId: "6cf81e",
-            runId: "pre-fix",
-            hypothesisId: "D",
-            location: "ExerciseRunner.tsx:loadDatasetDone",
-            message: "dataset loaded into pyodide",
-            data: { cancelled },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         if (!cancelled) datasetLoadedRef.current = true;
       } catch (e: unknown) {
-        // #region agent log
-        fetch("http://127.0.0.1:7843/ingest/7d9a5a8f-76b1-409b-8c93-bd0cae8d08e2", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "6cf81e" },
-          body: JSON.stringify({
-            sessionId: "6cf81e",
-            runId: "pre-fix",
-            hypothesisId: "D",
-            location: "ExerciseRunner.tsx:loadDatasetError",
-            message: "dataset load failed",
-            data: { error: e instanceof Error ? e.message : String(e) },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         if (!cancelled)
           toast.error(e instanceof Error ? e.message : "Failed to load dataset into pandas");
       }
@@ -175,8 +125,8 @@ export function ExerciseRunner({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-load when status/plan changes, not every pyodide object tick
-  }, [plan, dataLoading, pyodide.status, pyodide.loadDataset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-load when plan or boot status changes
+  }, [plan, dataLoading, pyodide.status === "ready" || pyodide.status === "loaded"]);
 
   // Voice briefing on first load.
   useEffect(() => {
@@ -335,14 +285,16 @@ export function ExerciseRunner({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-display text-3xl tracking-tight">{exercise.title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            <Badge variant="secondary" className="capitalize mr-2">
+          <div className="mt-1 text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Badge variant="secondary" className="capitalize">
               {exercise.difficulty}
             </Badge>
-            Target <code className="text-foreground">{exercise.target_col}</code> · y{" "}
-            <code className="text-foreground">{exercise.y_col}</code>
-            <span className="ml-3 font-mono text-xs">seed {seed}</span>
-          </p>
+            <span>
+              Target <code className="text-foreground">{exercise.target_col}</code> · y{" "}
+              <code className="text-foreground">{exercise.y_col}</code>
+            </span>
+            <span className="font-mono text-xs">seed {seed}</span>
+          </div>
           {exercise.description && (
             <p className="mt-2 text-sm text-muted-foreground max-w-3xl">{exercise.description}</p>
           )}
