@@ -20,6 +20,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedExercisesIndexRouteImport } from './routes/_authenticated/exercises.index'
 import { Route as AuthenticatedExercisesNewRouteImport } from './routes/_authenticated/exercises.new'
 import { Route as AuthenticatedExercisesIdRouteImport } from './routes/_authenticated/exercises.$id'
+import { Route as AuthenticatedDatasetsIdRouteImport } from './routes/_authenticated/datasets.$id'
 import { Route as ApiPublicCronSendDueReviewsRouteImport } from './routes/api/public/cron/send-due-reviews'
 
 const AuthRoute = AuthRouteImport.update({
@@ -79,6 +80,11 @@ const AuthenticatedExercisesIdRoute =
     path: '/$id',
     getParentRoute: () => AuthenticatedExercisesRoute,
   } as any)
+const AuthenticatedDatasetsIdRoute = AuthenticatedDatasetsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedDatasetsRoute,
+} as any)
 const ApiPublicCronSendDueReviewsRoute =
   ApiPublicCronSendDueReviewsRouteImport.update({
     id: '/api/public/cron/send-due-reviews',
@@ -90,10 +96,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/datasets': typeof AuthenticatedDatasetsRoute
+  '/datasets': typeof AuthenticatedDatasetsRouteWithChildren
   '/exercises': typeof AuthenticatedExercisesRouteWithChildren
   '/history': typeof AuthenticatedHistoryRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/datasets/$id': typeof AuthenticatedDatasetsIdRoute
   '/exercises/$id': typeof AuthenticatedExercisesIdRoute
   '/exercises/new': typeof AuthenticatedExercisesNewRoute
   '/exercises/': typeof AuthenticatedExercisesIndexRoute
@@ -103,9 +110,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/datasets': typeof AuthenticatedDatasetsRoute
+  '/datasets': typeof AuthenticatedDatasetsRouteWithChildren
   '/history': typeof AuthenticatedHistoryRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/datasets/$id': typeof AuthenticatedDatasetsIdRoute
   '/exercises/$id': typeof AuthenticatedExercisesIdRoute
   '/exercises/new': typeof AuthenticatedExercisesNewRoute
   '/exercises': typeof AuthenticatedExercisesIndexRoute
@@ -117,10 +125,11 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/datasets': typeof AuthenticatedDatasetsRoute
+  '/_authenticated/datasets': typeof AuthenticatedDatasetsRouteWithChildren
   '/_authenticated/exercises': typeof AuthenticatedExercisesRouteWithChildren
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/datasets/$id': typeof AuthenticatedDatasetsIdRoute
   '/_authenticated/exercises/$id': typeof AuthenticatedExercisesIdRoute
   '/_authenticated/exercises/new': typeof AuthenticatedExercisesNewRoute
   '/_authenticated/exercises/': typeof AuthenticatedExercisesIndexRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/exercises'
     | '/history'
     | '/settings'
+    | '/datasets/$id'
     | '/exercises/$id'
     | '/exercises/new'
     | '/exercises/'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/datasets'
     | '/history'
     | '/settings'
+    | '/datasets/$id'
     | '/exercises/$id'
     | '/exercises/new'
     | '/exercises'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/_authenticated/exercises'
     | '/_authenticated/history'
     | '/_authenticated/settings'
+    | '/_authenticated/datasets/$id'
     | '/_authenticated/exercises/$id'
     | '/_authenticated/exercises/new'
     | '/_authenticated/exercises/'
@@ -254,6 +266,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExercisesIdRouteImport
       parentRoute: typeof AuthenticatedExercisesRoute
     }
+    '/_authenticated/datasets/$id': {
+      id: '/_authenticated/datasets/$id'
+      path: '/$id'
+      fullPath: '/datasets/$id'
+      preLoaderRoute: typeof AuthenticatedDatasetsIdRouteImport
+      parentRoute: typeof AuthenticatedDatasetsRoute
+    }
     '/api/public/cron/send-due-reviews': {
       id: '/api/public/cron/send-due-reviews'
       path: '/api/public/cron/send-due-reviews'
@@ -263,6 +282,19 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedDatasetsRouteChildren {
+  AuthenticatedDatasetsIdRoute: typeof AuthenticatedDatasetsIdRoute
+}
+
+const AuthenticatedDatasetsRouteChildren: AuthenticatedDatasetsRouteChildren = {
+  AuthenticatedDatasetsIdRoute: AuthenticatedDatasetsIdRoute,
+}
+
+const AuthenticatedDatasetsRouteWithChildren =
+  AuthenticatedDatasetsRoute._addFileChildren(
+    AuthenticatedDatasetsRouteChildren,
+  )
 
 interface AuthenticatedExercisesRouteChildren {
   AuthenticatedExercisesIdRoute: typeof AuthenticatedExercisesIdRoute
@@ -284,7 +316,7 @@ const AuthenticatedExercisesRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedDatasetsRoute: typeof AuthenticatedDatasetsRoute
+  AuthenticatedDatasetsRoute: typeof AuthenticatedDatasetsRouteWithChildren
   AuthenticatedExercisesRoute: typeof AuthenticatedExercisesRouteWithChildren
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -292,7 +324,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedDatasetsRoute: AuthenticatedDatasetsRoute,
+  AuthenticatedDatasetsRoute: AuthenticatedDatasetsRouteWithChildren,
   AuthenticatedExercisesRoute: AuthenticatedExercisesRouteWithChildren,
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,

@@ -63,8 +63,15 @@ self.onmessage = async (e: MessageEvent<In>) => {
   const msg = e.data;
   try {
     if (msg.type === "init") {
-      await ensurePyodide();
-      (self as any).postMessage({ type: "ready" } satisfies Out);
+      try {
+        await ensurePyodide();
+        (self as any).postMessage({ type: "ready" });
+      } catch (err) {
+        (self as any).postMessage({
+          type: "init_error",
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       return;
     }
     if (msg.type === "load" || msg.type === "reset") {

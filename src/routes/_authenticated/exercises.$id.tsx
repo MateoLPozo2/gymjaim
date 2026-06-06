@@ -9,6 +9,7 @@ import { getBuiltinCsv } from "@/lib/datasets/builtin";
 import { usePyodide } from "@/hooks/use-pyodide";
 import { parseCsv, getColumn, dropMissingRows, ParsedCsv } from "@/lib/csv";
 import { buildPlan, Difficulty } from "@/lib/missing-values";
+import { buildSampleSolutions } from "@/lib/exercise-solutions";
 import { mean, median, ordinaryLeastSquares } from "@/lib/stats";
 import { randomSeed } from "@/lib/seeded-random";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import {
   ZAxis,
   ComposedChart,
 } from "recharts";
-import { ArrowLeft, Check, Play, RotateCw } from "lucide-react";
+import { ArrowLeft, Check, Play, RotateCw, Lightbulb, Copy } from "lucide-react";
 import Editor from "@monaco-editor/react";
 
 const RunnerSearch = z.object({ seed: z.string().optional() });
@@ -96,8 +97,15 @@ function Runner({
   const [rawCsv, setRawCsv] = useState<string | null>(null);
   const [plan, setPlan] = useState<ReturnType<typeof buildPlan> | null>(null);
   const [workingCsv, setWorkingCsv] = useState<ParsedCsv | null>(null);
-  const [code, setCode] = useState<string>(
-    `# df has the dataset with NaNs in '${exercise.target_col}'.\n# Try imputing them so the regression of '${exercise.target_col}' on '${exercise.y_col}'\n# matches the un-deleted ground truth.\n\ndf['${exercise.target_col}'] = df['${exercise.target_col}'].fillna(\n    df['${exercise.target_col}'].mean()\n)\n\ndf.head()\n`,
+  const starterCode = useMemo(
+    () =>
+      `# df has the dataset with NaNs in '${exercise.target_col}'.\n# Try imputing them so the regression of '${exercise.target_col}' on '${exercise.y_col}'\n# matches the un-deleted ground truth.\n\ndf['${exercise.target_col}'] = df['${exercise.target_col}'].fillna(\n    df['${exercise.target_col}'].mean()\n)\n\ndf.head()\n`,
+    [exercise.target_col, exercise.y_col],
+  );
+  const [code, setCode] = useState<string>(starterCode);
+  const sampleSolutions = useMemo(
+    () => buildSampleSolutions(exercise.target_col, exercise.y_col, exercise.condition_col),
+    [exercise.target_col, exercise.y_col, exercise.condition_col],
   );
   const [output, setOutput] = useState<{ stdout: string; resultText: string | null; tableJson: string | null; error?: string } | null>(null);
   const [running, setRunning] = useState(false);
@@ -219,8 +227,16 @@ function Runner({
     Math.abs(slopes.user - slopes.optimal) < 1e-4;
 
   async function onRun() {
-    if (pyodide.status === "loading") {
-      toast.message("Pyodide is still booting (one-time, ~10s)…");
+    if (pyodide.status === "loading" || pyodide.status === "idle") {
+      toast.message("Python runtime is still booting (one-time, ~10s)…");
+      return;
+    }
+    if (pyodide.status === "error") {
+      toast.error(pyodide.error ?? "Python runtime failed to load");
+      return;
+    }
+    if (pyodide.status === "ready") {
+      toast.message("Loading dataset into pandas…");
       return;
     }
     setRunning(true);
@@ -233,6 +249,10 @@ function Runner({
         error: result.error,
       });
       if (result.dfCsv) setWorkingCsv(parseCsv(result.dfCsv));
+      if (result.error) toast.error("Code raised an exception — see output");
+      else toast.success("Run complete");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Run failed");
     } finally {
       setRunning(false);
     }
@@ -241,9 +261,11 @@ function Runner({
   async function onReset() {
     if (!plan) return;
     setWorkingCsv(plan.workingCsv);
+    setCode(starterCode);
     await pyodide.resetDataset(csvToString(plan.workingCsv));
     setOutput(null);
-    toast.success("Reverted to the starting missing-values dataset");
+    recordedRef.current = false;
+    toast.success("Reverted dataset and code to the starter state");
   }
 
   async function onSave() {
@@ -313,9 +335,18 @@ function Runner({
                 }}
               />
             </div>
-            <div className="mt-3 flex gap-2">
-              <Button onClick={onRun} disabled={running || pyodide.status === "loading"} className="gap-2">
-                <Play className="h-4 w-4" /> Run
+            <div className="mt-3 flex gap-2 flex-wrap">
+              <Button
+                onClick={onRun}
+                disabled={
+                  running ||
+                  pyodide.status === "loading" ||
+                  pyodide.status === "idle" ||
+                  pyodide.status === "error"
+                }
+                className="gap-2"
+              >
+                <Play className="h-4 w-4" /> {running ? "Running…" : "Run"}
               </Button>
               <Button variant="outline" onClick={onReset} className="gap-2">
                 <RotateCw className="h-4 w-4" /> Reset
@@ -324,6 +355,11 @@ function Runner({
                 <Check className="h-4 w-4" /> Save rep
               </Button>
             </div>
+            {workingCsv && (
+              <p className="mt-2 text-[11px] font-mono text-muted-foreground">
+                df ready · {workingCsv.rows.length} rows × {workingCsv.columns.length} cols
+              </p>
+            )}
             {output && (
               <div className="mt-4 space-y-3">
                 {output.error && (
@@ -386,19 +422,70 @@ function Runner({
           </CardContent>
         </Card>
       </div>
+
+      <SampleSolutions solutions={sampleSolutions} onLoad={(snippet) => {
+        setCode(snippet);
+        toast.success("Snippet loaded into the editor — hit Run");
+      }} />
+    </div>
+  );
+}
+
+function SampleSolutions({
+  solutions,
+  onLoad,
+}: {
+  solutions: ReturnType<typeof buildSampleSolutions>;
+  onLoad: (snippet: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-8">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <Lightbulb className="h-4 w-4" />
+        {open ? "Hide sample solutions" : "Peek at sample solutions"}
+      </button>
+      {open && (
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {solutions.map((s) => (
+            <Card key={s.key}>
+              <CardHeader>
+                <CardTitle className="font-display text-base">{s.title}</CardTitle>
+                <CardDescription>{s.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <pre className="rounded-md bg-secondary p-3 text-[11px] overflow-x-auto whitespace-pre font-mono leading-relaxed max-h-56">
+                  {s.code}
+                </pre>
+                <div className="mt-3 flex justify-end">
+                  <Button size="sm" variant="outline" className="gap-2" onClick={() => onLoad(s.code)}>
+                    <Copy className="h-3.5 w-3.5" /> Load into editor
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function PyodideStatus({ status }: { status: string }) {
   const text =
-    status === "loading"
+    status === "loading" || status === "idle"
       ? "Booting Python runtime…"
-      : status === "ready" || status === "dataset"
-        ? "Python ready"
-        : status === "error"
-          ? "Python failed to load"
-          : "";
+      : status === "ready"
+        ? "Python ready · loading dataset"
+        : status === "dataset"
+          ? "Python + pandas ready"
+          : status === "error"
+            ? "Python failed to load"
+            : "";
   if (!text) return null;
   return (
     <span className="text-xs font-mono text-muted-foreground">

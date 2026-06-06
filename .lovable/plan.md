@@ -1,96 +1,54 @@
+# Plan: Functional runner, solution cards, dataset detail view
 
-# GymJaim — Practice Gym for Data Inference Judgment
+## 1. Fix the exercise runner (Run / Reset)
 
-A reps-based gym for junior data scientists to sharpen their inference and missing-value judgment in a controlled, supportive environment. Real pandas runs in the browser via Pyodide; spaced-repetition emails pull learners back to revisit and level up exercises they've already tried.
+The runner already wires `onRun` → `pyodide.exec(code)` and `onReset` → `pyodide.resetDataset(...)`, but it has two real bugs that make it feel broken:
 
-## Positioning (per hackathon guide)
+- **Worker boot can hang silently on the Worker SSR runtime.** The worker uses `new URL("../lib/pyodide/worker.ts", import.meta.url)` which is fine in browser, but the route is wrapped in SSR. We'll guard the `usePyodide` effect with `typeof window !== "undefined"` and only construct the Worker in the browser.
+- **Run button is gated on `pyodide.status === "loading"`** but `status` starts as `"idle"` before the effect runs, and after a successful `loadDataset` the status is `"dataset"` — Run already works there, but error states are swallowed. We'll:
+  - Surface `pyodide.error` in the status pill.
+  - Disable Run only when status is `idle | loading | error`.
+  - Add a one-line "loaded N rows × M cols" confirmation under the editor once the dataset is in pandas.
+- **Reset** currently calls `resetDataset` with the working CSV (the one with NaNs) — correct, but we also reset the editor's code back to the starter snippet so users can retry from scratch.
 
-- **Buyer**: junior data scientists (0–3 yrs), and the senior ICs / team leads who want to onboard them.
-- **Status quo it replaces**: scattered, unsupervised self-practice — running notebooks alone with no signal that your imputation actually helped or hurt the answer.
-- **Wedge**: every attempt is auto-graded against an oracle (the true regression slope from the un-deleted data), and a spaced-repetition email loop pulls you back to retry the same exercise 2 / 7 / 21 days later — so you practice the *judgment*, not just the syntax.
-- **Why now**: Pyodide makes running pandas in-browser viable in 2026, so we can grade real code with zero backend per-user compute.
-- **Weakest point (named honestly on the about page)**: oracle scoring only works for problems with a known ground truth — that limits us to teaching-dataset-style exercises, not open-ended real-world work. The bet is that *judgment training* is exactly what's missing for juniors.
+No backend changes needed for this section.
 
-## Routes
+## 2. "Expected solutions" cards on the runner
 
-Public:
-- `/` — landing: hero, "the problem", "how the gym works" (3 reps), live mini-exercise preview embedded, founder/edge section, CTA.
-- `/auth` — Google sign-in.
-- `/exercises/$id` (public-readable for shareability of public exercises; CTA to sign in to attempt).
+Add a new collapsible section under the editor titled **"Peek at sample solutions"** with 3 cards (mean fill, median fill, conditional group fill). Each card shows:
 
-Authenticated (`_authenticated/`):
-- `/dashboard` — streak, recent attempts, suggested next exercise, due-for-review list (spaced-rep queue).
-- `/exercises` — browse: tabs for *Public Library*, *Mine*, *Due for review*. Filter by difficulty, dataset, author.
-- `/exercises/$id/attempt` — the runner.
-- `/exercises/new` — author flow.
-- `/datasets` — bundled seaborn + community + my uploads.
-- `/history` — full attempt log.
-- `/settings` — email cadence toggles (default 2/7/21 days), unsubscribe.
+- Short title + one-line description of the strategy
+- Read-only Python snippet (using the exercise's `target_col`, `y_col`, `condition_col`)
+- **"Load into editor"** button that copies the snippet into the Monaco editor
 
-## Exercise runner (Pyodide)
+Snippets are generated client-side from the exercise's column metadata — no DB writes, no new server functions. Lives in a new `src/lib/exercise-solutions.ts` helper.
 
-- Singleton Pyodide web worker, preloads `pandas`, `numpy`, `scikit-learn`. Boot UI shows progress.
-- Dataset fetched as CSV from Supabase Storage (or static seaborn CSVs from `src/assets/datasets/`) into the worker DataFrame.
-- Missing-value generation logic ported verbatim from the Streamlit script (Easy = MCAR, Medium = condition on another var, Hard = condition + quartile). Seed stored per attempt → Reset truly restores the same starting state, and email follow-ups load the same seed.
-- Monaco editor (python). Execute captures stdout + last-expression; DataFrames render as tables, scalars as code blocks (mirrors the Streamlit UX).
-- Metrics row: Expected slope, Your slope, Δ, % change, Optimal-oracle slope. Green check when user matches the oracle.
-- Recharts plot: original regression line, user regression line, 100-point scatter of consistent indices.
+## 3. Dataset detail view
 
-## Spaced-repetition email loop
+Currently `/datasets` is a flat list. We'll add:
 
-- After each attempt insert review rows scheduled at now+2d, +7d, +21d into `review_queue` (skips if user disabled cadence).
-- pg_cron job every 10 minutes calls `/api/public/cron/send-due-reviews` (HMAC-verified). The route reads due rows, renders a React-Email template ("Come back for another rep: <exercise title>"), and sends through Lovable Emails (the built-in email infrastructure — `email_domain--setup_email_infra` + `email_domain--scaffold_transactional_email`).
-- Email = exercise title + one-line difficulty/dataset + "Take another rep" button → deep link `/_authenticated/exercises/$id/attempt?seed=<same-seed>`. Same seed = comparable score, so the user can see if their judgment improved.
-- Suppressed/unsubscribed addresses honored automatically by the scaffold.
+- A new route `src/routes/_authenticated/datasets.$id.tsx` (URL `/datasets/$id`) that shows:
+  - Dataset name, description, source, # rows, # columns
+  - **Variables table**: column name, inferred dtype (number/string/bool), non-null count, sample values, min/max/mean for numerics
+  - **Preview table**: first 20 rows
+  - For built-in seaborn datasets: a short canned blurb (origin + typical use) hard-coded in `src/lib/datasets/builtin-meta.ts` — we won't call Kaggle at runtime (no API key, would also require server-side fetching). I'll note this in the UI and we can add Kaggle later if you provide an API key.
+- A new server function `getDatasetDetail({ id })` in `src/lib/api/datasets.functions.ts` that returns the dataset row + a signed URL (for uploaded CSVs) so the page can parse columns/stats client-side using existing `parseCsv` + `src/lib/stats.ts`.
+- Make each card on `/datasets` a `<Link to="/datasets/$id">`.
 
-## Datasets
+## 4. Out of scope (ask before doing)
 
-- Bundle seaborn samples (`tips`, `penguins`, `mpg`, `exercise`, `car_crashes`, `planets`, `healthexp`) as static CSVs in `src/assets/datasets/`.
-- User uploads (≤5MB CSV) → Supabase Storage; metadata row in `datasets`. `is_public` flag opens it to the community library.
+- Live Kaggle metadata fetch (needs API key + server route).
+- Persisting "viewed sample solution" as a hint penalty on attempts.
+- Editor autocomplete for column names.
 
-## Auth
+## Files
 
-- Lovable Cloud + Google OAuth via the Lovable broker (`lovable.auth.signInWithOAuth("google")`). Configure provider with `supabase--configure_social_auth`.
-- Managed `_authenticated/` layout (no custom gate).
-- Sign-out follows the cache-teardown hygiene (`cancelQueries` → `clear` → `signOut` → `replace`-navigate to `/auth`).
+- edit `src/hooks/use-pyodide.ts` — SSR guard + expose error
+- edit `src/routes/_authenticated/exercises.$id.tsx` — enable button logic, reset editor code, mount solution cards, dataset-loaded confirmation
+- new `src/lib/exercise-solutions.ts` — snippet generator
+- new `src/lib/datasets/builtin-meta.ts` — blurbs for 7 seaborn sets
+- new `src/lib/api/datasets.functions.ts` — add `getDatasetDetail`
+- new `src/routes/_authenticated/datasets.$id.tsx`
+- edit `src/routes/_authenticated/datasets.tsx` — link cards to detail page
 
-## Data model (Lovable Cloud)
-
-- `profiles` (id → auth.users, display_name, avatar_url, email_cadence_enabled bool default true) + auto-create trigger.
-- `datasets` (id, owner_id nullable, name, description, storage_path nullable, builtin_key nullable, columns jsonb, is_public, is_builtin, created_at).
-- `exercises` (id, author_id, title, description, dataset_id, target_col, y_col, condition_col nullable, difficulty enum, visibility ['public','private'], created_at).
-- `attempts` (id, user_id, exercise_id, seed bigint, code text, user_slope, expected_slope, optimal_slope, slope_delta, matched_oracle bool, created_at).
-- `review_queue` (id, user_id, exercise_id, seed, due_at timestamptz, sent_at timestamptz nullable).
-- RLS: owner-scoped CRUD; public-or-own read on exercises/datasets; attempts/queue private. Explicit `GRANT`s per template rules.
-- Storage bucket `datasets` with owner-folder insert + signed-URL reads via server fn.
-
-## Server functions
-
-`requireSupabaseAuth`-protected: `listExercises({scope})`, `getExercise(id)`, `createExercise`, `updateExercise`, `deleteExercise`, `createDatasetFromUpload`, `toggleDatasetPublic`, `recordAttempt` (also enqueues review rows), `listAttempts`, `listDueReviews`, `updateEmailCadence`.
-
-Server route (`/api/public/cron/send-due-reviews`, HMAC-verified): drains due review rows, sends via Lovable Emails, marks `sent_at`.
-
-## Design direction
-
-Editorial / warm-academic — drawn from the Bayes Law logo's beige curve plot. Off-white background, deep ink navy, single muted ochre accent. Serif display (Fraunces) for headings + Inter body. Restrained motion. Logo wired as an inline SVG component in the header. Charts use the same ochre + navy palette so dashboard visuals feel of-a-piece with the brand mark.
-
-## Build order
-
-1. Enable Lovable Cloud + Google auth (configure provider) + email domain + `setup_email_infra`.
-2. Schema migration + RLS + storage bucket.
-3. Landing page (with founder/edge block) + logo asset + `/auth` screen.
-4. Authenticated shell + dashboard.
-5. Pyodide worker + runner on one hardcoded exercise.
-6. Exercise library + detail + attempts persistence + history.
-7. Dataset upload + community sharing.
-8. Exercise authoring flow.
-9. App emails: `scaffold_transactional_email`, "review reminder" template, `review_queue` insert on attempt, public cron route, pg_cron job.
-10. Settings page (cadence toggle, unsubscribe link wiring) + polish + empty/error/notfound states.
-
-## Open defaults (call out, not blocking)
-
-- Landing page will ship without an evidence quote (you didn't have one); I'll leave a clearly-marked placeholder block you can swap once you have a user quote.
-- Code editor: Monaco python, no LSP.
-- CSV upload cap: 5 MB.
-- Score surfaced as |Δ slope| + % change + green check on oracle match (mirrors the Streamlit app).
-- Default spaced-repetition cadence: 2 / 7 / 21 days, user-overridable later in `/settings`.
+Confirm and I'll switch to build mode.
