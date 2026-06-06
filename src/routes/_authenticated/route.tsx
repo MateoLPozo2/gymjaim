@@ -33,11 +33,6 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthedLayout() {
-  const isWelcome =
-    typeof window !== "undefined" && window.location.pathname === "/welcome";
-  if (isWelcome) {
-    return <Outlet />;
-  }
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader />
