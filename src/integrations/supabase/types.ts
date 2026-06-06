@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      datasets: {
+        Row: {
+          builtin_key: string | null
+          columns: Json
+          created_at: string
+          description: string | null
+          id: string
+          is_builtin: boolean
+          is_public: boolean
+          name: string
+          owner_id: string | null
+          storage_path: string | null
+        }
+        Insert: {
+          builtin_key?: string | null
+          columns?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_builtin?: boolean
+          is_public?: boolean
+          name: string
+          owner_id?: string | null
+          storage_path?: string | null
+        }
+        Update: {
+          builtin_key?: string | null
+          columns?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_builtin?: boolean
+          is_public?: boolean
+          name?: string
+          owner_id?: string | null
+          storage_path?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email_cadence_enabled: boolean
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email_cadence_enabled?: boolean
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email_cadence_enabled?: boolean
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
