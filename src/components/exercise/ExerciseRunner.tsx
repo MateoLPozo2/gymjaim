@@ -335,14 +335,16 @@ export function ExerciseRunner({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="font-display text-3xl tracking-tight">{exercise.title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            <Badge variant="secondary" className="capitalize mr-2">
+          <div className="mt-1 text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Badge variant="secondary" className="capitalize">
               {exercise.difficulty}
             </Badge>
-            Target <code className="text-foreground">{exercise.target_col}</code> · y{" "}
-            <code className="text-foreground">{exercise.y_col}</code>
-            <span className="ml-3 font-mono text-xs">seed {seed}</span>
-          </p>
+            <span>
+              Target <code className="text-foreground">{exercise.target_col}</code> · y{" "}
+              <code className="text-foreground">{exercise.y_col}</code>
+            </span>
+            <span className="font-mono text-xs">seed {seed}</span>
+          </div>
           {exercise.description && (
             <p className="mt-2 text-sm text-muted-foreground max-w-3xl">{exercise.description}</p>
           )}
