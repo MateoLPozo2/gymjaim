@@ -30,6 +30,7 @@ export function usePyodide(): UsePyodide {
   const idRef = useRef(0);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const worker = new Worker(
       new URL("../lib/pyodide/worker.ts", import.meta.url),
       { type: "module" },
@@ -40,13 +41,16 @@ export function usePyodide(): UsePyodide {
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
       if (msg.type === "ready") {
-        setStatus("ready");
+        setStatus((s) => (s === "dataset" ? "dataset" : "ready"));
         initWaitersRef.current.forEach((w) => w());
         initWaitersRef.current = [];
       } else if (msg.type === "loaded") {
         setStatus("dataset");
         loadWaitersRef.current.forEach((w) => w());
         loadWaitersRef.current = [];
+      } else if (msg.type === "init_error") {
+        setError(String(msg.error ?? "Failed to load Python runtime"));
+        setStatus("error");
       } else if (msg.type === "exec_result") {
         const fn = pendingRef.current.get(msg.id);
         if (fn) {
