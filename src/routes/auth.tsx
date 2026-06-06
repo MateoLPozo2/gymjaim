@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/brand-logo";
 import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
-import { enableDevSession, isDevModeEnabled } from "@/lib/dev-auth";
 import { toast } from "sonner";
 
 const AuthSearch = z.object({ redirect: z.string().optional() });
@@ -28,22 +27,12 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (import.meta.env.DEV && isDevModeEnabled()) {
-      navigate({ to: redirect ?? "/dashboard", replace: true });
-      return;
-    }
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
         navigate({ to: redirect ?? "/dashboard", replace: true });
       }
     });
   }, [navigate, redirect]);
-
-  function devSkip() {
-    enableDevSession();
-    toast.success("Dev mode enabled — local session only");
-    navigate({ to: redirect ?? "/dashboard", replace: true });
-  }
 
   async function signInGoogle() {
     setBusy(true);
@@ -89,16 +78,6 @@ function AuthPage() {
             By continuing you agree to receive your own practice reminders. Cadence is editable in
             settings.
           </p>
-          {import.meta.env.DEV && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-4 w-full"
-              onClick={devSkip}
-            >
-              Skip OAuth (Dev Mode)
-            </Button>
-          )}
         </div>
         <p className="mt-6 text-center text-sm text-muted-foreground">
           <a href="/" className="hover:text-foreground">← Back to home</a>
