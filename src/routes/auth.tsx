@@ -100,6 +100,17 @@ function AuthPage() {
             <GoogleIcon />
             {busy ? "Opening Google…" : "Continue with Google"}
           </Button>
+          {import.meta.env.DEV && (
+            <Button
+              variant="outline"
+              size="lg"
+              className="mt-3 w-full"
+              onClick={signInDev}
+              disabled={busy}
+            >
+              🛠 Dev mode: skip OAuth
+            </Button>
+          )}
           <p className="mt-6 text-xs text-muted-foreground">
             By continuing you agree to receive your own practice reminders. Cadence is editable in
             settings.
