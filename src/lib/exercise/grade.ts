@@ -10,9 +10,18 @@ export function gradeAttempt(
   const slopes = computeSlopes(plan, workingCsv, exercise);
   const delta = slopes.user - slopes.expected;
   const pct = slopes.expected ? (delta / slopes.expected) * 100 : NaN;
-  const matched =
+  // Oracle match: user reproduces either the ground-truth slope or the
+  // best achievable imputed slope. Tolerance is loose enough to absorb
+  // floating-point drift across pyodide / JS fallback runs.
+  const TOL = 1e-3;
+  const matchesOptimal =
     Number.isFinite(slopes.optimal) &&
-    Math.abs(slopes.user - slopes.optimal) < 1e-4;
+    Math.abs(slopes.user - slopes.optimal) < TOL;
+  const matchesExpected =
+    Number.isFinite(slopes.expected) &&
+    Number.isFinite(slopes.user) &&
+    Math.abs(slopes.user - slopes.expected) < TOL;
+  const matched = matchesOptimal || matchesExpected;
   return { slopes, delta, pct, matched };
 }
 
