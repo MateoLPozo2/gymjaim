@@ -38,7 +38,9 @@ function NewExercise() {
   const [description, setDescription] = useState("");
 
   const selected = (datasets.data?.datasets ?? []).find((d: any) => d.id === datasetId);
-  const cols: string[] = Array.isArray(selected?.columns) ? selected.columns : [];
+  const cols: string[] = Array.isArray(selected?.columns)
+    ? (selected.columns as unknown[]).filter((c): c is string => typeof c === "string")
+    : [];
 
   useEffect(() => {
     if (!targetCol && cols[0]) setTargetCol(cols[0]);
