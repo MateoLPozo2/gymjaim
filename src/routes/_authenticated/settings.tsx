@@ -1,7 +1,6 @@
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Link } from "@tanstack/react-router";
 import {
   getMyProfile,
   setEmailCadence,
@@ -9,9 +8,7 @@ import {
   scheduleTestReview,
   processDueReviews,
 } from "@/lib/api/attempts.functions";
-import { listMyDatasets } from "@/lib/api/datasets.functions";
 import { setWelcomeOnNextLogin, getOnboardingStatus } from "@/lib/onboarding.functions";
-import { VOICE_COACH_STORAGE_KEY } from "@/hooks/use-voice-coach";
 import { parseRecipientEmails } from "@/lib/reviews/parse-recipient-emails";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -20,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
-import { Mail, Send, Volume2 } from "lucide-react";
+import { Mail, Send } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Jim's Data Gym" }] }),
@@ -35,7 +32,6 @@ function SettingsPage() {
   const qc = useQueryClient();
   const profileFn = useServerFn(getMyProfile);
   const setFn = useServerFn(setEmailCadence);
-  const myDsFn = useServerFn(listMyDatasets);
   const reviewsFn = useServerFn(listScheduledReviews);
   const scheduleFn = useServerFn(scheduleTestReview);
   const processFn = useServerFn(processDueReviews);
@@ -43,7 +39,6 @@ function SettingsPage() {
   const setWelcomeFn = useServerFn(setWelcomeOnNextLogin);
 
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => profileFn() });
-  const myDatasets = useQuery({ queryKey: ["my-datasets"], queryFn: () => myDsFn() });
   const reviews = useQuery({ queryKey: ["scheduled-reviews"], queryFn: () => reviewsFn() });
   const onboarding = useQuery({ queryKey: ["onboarding-status"], queryFn: () => onbStatusFn() });
 
@@ -69,14 +64,13 @@ function SettingsPage() {
     onSuccess: () => toast.success("Saved"),
   });
 
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [recipientInput, setRecipientInput] = useState("");
   const recipientRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setVoiceEnabled(localStorage.getItem(VOICE_COACH_STORAGE_KEY) === "true");
     setRecipientInput(localStorage.getItem(REVIEW_RECIPIENTS_KEY) ?? "");
   }, []);
+
 
   useEffect(() => {
     const el = recipientRef.current;
@@ -239,106 +233,6 @@ function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="font-display text-lg flex items-center gap-2">
-            <Volume2 className="h-5 w-5" /> Voice coach
-          </CardTitle>
-          <CardDescription>
-            ElevenLabs reads exercise briefings and post-rep debriefs aloud in the runner.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between rounded-lg border border-border p-4">
-            <div>
-              <p className="font-medium text-sm">Enable voice coach</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Briefing on exercise open; debrief after saving a rep.
-              </p>
-            </div>
-            <Switch
-              checked={voiceEnabled}
-              onCheckedChange={(v) => {
-                setVoiceEnabled(v);
-                localStorage.setItem(VOICE_COACH_STORAGE_KEY, v ? "true" : "false");
-                toast.success(v ? "Voice coach on" : "Voice coach off");
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="font-display text-lg">Welcome screen</CardTitle>
-          <CardDescription>
-            Replay the intro and re-pick your role and topics on your next sign-in.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between rounded-lg border border-border p-4">
-            <div>
-              <p className="font-medium text-sm">Show welcome on next login</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Your saved preferences will be pre-filled.
-              </p>
-            </div>
-            <Switch
-              checked={!!onboarding.data?.profile?.welcome_on_next_login}
-              disabled={onboarding.isLoading || welcomeMut.isPending}
-              onCheckedChange={(v) => welcomeMut.mutate(v)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="font-display text-lg">My datasets</CardTitle>
-          <CardDescription>CSV uploads you own. View headers and previews on each detail page.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {myDatasets.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : (myDatasets.data?.datasets ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No uploads yet.{" "}
-              <Link to="/exercises/new" className="text-foreground underline underline-offset-2">
-                Upload via new exercise
-              </Link>
-              .
-            </p>
-          ) : (
-            <ul className="divide-y divide-border">
-              {(myDatasets.data?.datasets ?? []).map((d: any) => (
-                <li key={d.id} className="flex items-center justify-between py-3 text-sm">
-                  <div>
-                    <Link
-                      to="/datasets/$id"
-                      params={{ id: d.id }}
-                      className="font-medium hover:underline"
-                    >
-                      {d.name}
-                    </Link>
-                    <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                      {(d.columns ?? []).length} columns
-                    </p>
-                  </div>
-                  <Link
-                    to="/datasets/$id"
-                    params={{ id: d.id }}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    View →
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

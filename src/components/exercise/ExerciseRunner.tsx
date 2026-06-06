@@ -434,9 +434,6 @@ export function ExerciseRunner({
         <Card>
           <CardHeader>
             <CardTitle className="font-display text-lg">Score vs. the truth</CardTitle>
-            <CardDescription>
-              Two independent reviewers — The Coach and The Critic — respond after each run.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">

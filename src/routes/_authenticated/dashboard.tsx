@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { listAttempts, listDueReviews } from "@/lib/api/attempts.functions";
 import { listExercises } from "@/lib/api/exercises.functions";
+import { getOnboardingStatus, getStarterSuggestions } from "@/lib/onboarding.functions";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Dumbbell, Flame, Plus } from "lucide-react";
+import { ArrowRight, Dumbbell, Flame, Sparkles } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Jim's Data Gym" }] }),
@@ -18,6 +20,8 @@ function Dashboard() {
   const attemptsFn = useServerFn(listAttempts);
   const dueFn = useServerFn(listDueReviews);
   const exFn = useServerFn(listExercises);
+  const onbFn = useServerFn(getOnboardingStatus);
+  const suggestFn = useServerFn(getStarterSuggestions);
 
   const attempts = useQuery({ queryKey: ["attempts"], queryFn: () => attemptsFn() });
   const due = useQuery({ queryKey: ["reviews-due"], queryFn: () => dueFn() });
@@ -25,6 +29,20 @@ function Dashboard() {
     queryKey: ["exercises", "public"],
     queryFn: () => exFn({ data: { scope: "public" } }),
   });
+  const onboarding = useQuery({ queryKey: ["onboarding-status"], queryFn: () => onbFn() });
+
+  const suggestMut = useMutation({
+    mutationFn: async () => {
+      const topics: string[] = onboarding.data?.profile?.preferred_topics ?? [];
+      const safeTopics = topics.length > 0 ? topics : ["regression"];
+      return suggestFn({ data: { topics: safeTopics } });
+    },
+  });
+
+  const suggested =
+    suggestMut.data?.suggestions ??
+    (exercises.data?.exercises ?? []).slice(0, 3);
+
 
   const last7 = (attempts.data?.attempts ?? []).filter(
     (a: any) => Date.now() - new Date(a.created_at).getTime() < 7 * 86400_000,
@@ -85,7 +103,7 @@ function Dashboard() {
             <CardDescription>From the public library.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {(exercises.data?.exercises ?? []).slice(0, 4).map((ex: any) => (
+            {suggested.map((ex: any) => (
               <div key={ex.id} className="flex items-center justify-between border-b border-border/60 pb-2.5 last:border-0">
                 <div>
                   <p className="text-sm font-medium">{ex.title}</p>
@@ -98,7 +116,7 @@ function Dashboard() {
                 </Button>
               </div>
             ))}
-            {(exercises.data?.exercises ?? []).length === 0 && (
+            {suggested.length === 0 && (
               <div className="text-sm text-muted-foreground">
                 No public exercises yet.{" "}
                 <Link to="/exercises/new" className="text-foreground underline underline-offset-2">
@@ -107,12 +125,16 @@ function Dashboard() {
                 .
               </div>
             )}
-            <Button asChild className="w-full mt-3 gap-2">
-              <Link to="/exercises/new">
-                <Plus className="h-4 w-4" /> Create a new exercise
-              </Link>
+            <Button
+              className="w-full mt-3 gap-2"
+              disabled={suggestMut.isPending || onboarding.isLoading}
+              onClick={() => suggestMut.mutate()}
+            >
+              <Sparkles className="h-4 w-4" />
+              {suggestMut.isPending ? "Picking…" : "Suggest me three exercises based on my goals"}
             </Button>
           </CardContent>
+
         </Card>
       </div>
     </div>
