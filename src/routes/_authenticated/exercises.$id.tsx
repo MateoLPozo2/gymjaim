@@ -422,6 +422,55 @@ function Runner({
           </CardContent>
         </Card>
       </div>
+
+      <SampleSolutions solutions={sampleSolutions} onLoad={(snippet) => {
+        setCode(snippet);
+        toast.success("Snippet loaded into the editor — hit Run");
+      }} />
+    </div>
+  );
+}
+
+function SampleSolutions({
+  solutions,
+  onLoad,
+}: {
+  solutions: ReturnType<typeof buildSampleSolutions>;
+  onLoad: (snippet: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-8">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <Lightbulb className="h-4 w-4" />
+        {open ? "Hide sample solutions" : "Peek at sample solutions"}
+      </button>
+      {open && (
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {solutions.map((s) => (
+            <Card key={s.key}>
+              <CardHeader>
+                <CardTitle className="font-display text-base">{s.title}</CardTitle>
+                <CardDescription>{s.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <pre className="rounded-md bg-secondary p-3 text-[11px] overflow-x-auto whitespace-pre font-mono leading-relaxed max-h-56">
+                  {s.code}
+                </pre>
+                <div className="mt-3 flex justify-end">
+                  <Button size="sm" variant="outline" className="gap-2" onClick={() => onLoad(s.code)}>
+                    <Copy className="h-3.5 w-3.5" /> Load into editor
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
