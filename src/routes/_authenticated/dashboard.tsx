@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { listAttempts, listDueReviews } from "@/lib/api/attempts.functions";
 import { listExercises } from "@/lib/api/exercises.functions";
+import { getOnboardingStatus, getStarterSuggestions } from "@/lib/onboarding.functions";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Dumbbell, Flame, Plus } from "lucide-react";
+import { ArrowRight, Dumbbell, Flame, Sparkles } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Jim's Data Gym" }] }),
