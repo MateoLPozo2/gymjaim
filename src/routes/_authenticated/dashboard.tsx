@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { listAttempts, listDueReviews } from "@/lib/api/attempts.functions";
 import { listExercises } from "@/lib/api/exercises.functions";
-import { getOnboardingStatus, getStarterSuggestions } from "@/lib/onboarding.functions";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Dumbbell, Flame, Sparkles } from "lucide-react";
 
