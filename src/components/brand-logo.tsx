@@ -1,4 +1,4 @@
-import logoAsset from "@/assets/jims-data-gym-logo.svg.asset.json";
+import logoAsset from "@/assets/gymjaim-logo.svg.asset.json";
 
 interface BrandLogoProps {
   className?: string;
