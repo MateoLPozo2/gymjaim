@@ -53,6 +53,32 @@ function AuthPage() {
     }
   }
 
+  async function signInDev() {
+    setBusy(true);
+    const email = "dev@gymjaim.local";
+    const password = "devmode-password-123";
+    try {
+      let { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        const { error: signUpErr } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: "Dev User" } },
+        });
+        if (signUpErr && !/registered/i.test(signUpErr.message)) {
+          throw signUpErr;
+        }
+        const retry = await supabase.auth.signInWithPassword({ email, password });
+        if (retry.error) throw retry.error;
+      }
+      toast.success("Signed in as dev user");
+      navigate({ to: redirect ?? "/dashboard", replace: true });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Dev sign in failed");
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-md">
