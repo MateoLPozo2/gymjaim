@@ -256,6 +256,32 @@ function SettingsPage() {
 
       <Card className="mt-6">
         <CardHeader>
+          <CardTitle className="font-display text-lg">Welcome screen</CardTitle>
+          <CardDescription>
+            Replay the intro and re-pick your role and topics on your next sign-in.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between rounded-lg border border-border p-4">
+            <div>
+              <p className="font-medium text-sm">Show welcome on next login</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Your saved preferences will be pre-filled.
+              </p>
+            </div>
+            <Switch
+              checked={!!onboarding.data?.profile?.welcome_on_next_login}
+              disabled={onboarding.isLoading || welcomeMut.isPending}
+              onCheckedChange={(v) => welcomeMut.mutate(v)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+
+
+      <Card className="mt-6">
+        <CardHeader>
           <CardTitle className="font-display text-lg">My datasets</CardTitle>
           <CardDescription>CSV uploads you own. View headers and previews on each detail page.</CardDescription>
         </CardHeader>
