@@ -49,10 +49,24 @@ function SettingsPage() {
 
   const welcomeMut = useMutation({
     mutationFn: (enabled: boolean) => setWelcomeFn({ data: { enabled } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["onboarding-status"] });
-      toast.success("Saved");
+    onMutate: async (enabled: boolean) => {
+      await qc.cancelQueries({ queryKey: ["onboarding-status"] });
+      const prev = qc.getQueryData<any>(["onboarding-status"]);
+      if (prev?.profile) {
+        qc.setQueryData(["onboarding-status"], {
+          ...prev,
+          profile: { ...prev.profile, welcome_on_next_login: enabled },
+          needsWelcome: !prev.profile.onboarding_completed_at || enabled,
+        });
+      }
+      return { prev };
     },
+    onError: (_err, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["onboarding-status"], ctx.prev);
+      toast.error("Could not save");
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["onboarding-status"] }),
+    onSuccess: () => toast.success("Saved"),
   });
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
