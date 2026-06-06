@@ -26,6 +26,9 @@ import { ArrowRight, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/welcome")({
   head: () => ({ meta: [{ title: "Welcome — Jim's Data Gym" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    force: search.force === true || search.force === "true" || search.force === "1",
+  }),
   component: WelcomePage,
 });
 
