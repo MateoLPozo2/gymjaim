@@ -10,7 +10,7 @@ const RunnerSearch = z.object({ seed: z.string().optional() });
 
 export const Route = createFileRoute("/_authenticated/exercises/$id")({
   validateSearch: (s) => RunnerSearch.parse(s),
-  head: () => ({ meta: [{ title: "Take a rep — GymJaim" }] }),
+  head: () => ({ meta: [{ title: "Take a rep — Jim's Data Gym" }] }),
   component: RunnerPage,
 });
 

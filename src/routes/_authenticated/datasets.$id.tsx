@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/datasets/$id")({
-  head: () => ({ meta: [{ title: "Dataset — GymJaim" }] }),
+  head: () => ({ meta: [{ title: "Dataset — Jim's Data Gym" }] }),
   component: DatasetDetailPage,
 });
 

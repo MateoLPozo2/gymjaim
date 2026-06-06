@@ -13,7 +13,7 @@ import { useState } from "react";
 export const Route = createFileRoute("/_authenticated/exercises/")({
   head: () => ({
     meta: [
-      { title: "Exercises — GymJaim" },
+      { title: "Exercises — Jim's Data Gym" },
       { name: "description", content: "Browse the public library or your own exercises." },
     ],
   }),

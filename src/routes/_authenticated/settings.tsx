@@ -22,11 +22,11 @@ import { useEffect, useRef, useState } from "react";
 import { Mail, Send, Volume2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Settings — GymJaim" }] }),
+  head: () => ({ meta: [{ title: "Settings — Jim's Data Gym" }] }),
   component: SettingsPage,
 });
 
-const REVIEW_RECIPIENTS_KEY = "gymjaim-review-recipients";
+const REVIEW_RECIPIENTS_KEY = "jims-data-gym-review-recipients";
 
 function SettingsPage() {
   const { user } = useRouteContext({ from: "/_authenticated" });

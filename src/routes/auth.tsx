@@ -14,7 +14,7 @@ export const Route = createFileRoute("/auth")({
   validateSearch: (s) => AuthSearch.parse(s),
   head: () => ({
     meta: [
-      { title: "Sign in — GymJaim" },
+      { title: "Sign in — Jim's Data Gym" },
       { name: "description", content: "Sign in with Google to start practicing." },
     ],
   }),
@@ -55,7 +55,7 @@ function AuthPage() {
 
   async function signInDev() {
     setBusy(true);
-    const email = "dev@gymjaim.local";
+    const email = "dev@jims-data-gym.local";
     const password = "devmode-password-123";
     try {
       let { error } = await supabase.auth.signInWithPassword({ email, password });

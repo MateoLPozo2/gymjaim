@@ -6,7 +6,7 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/history")({
-  head: () => ({ meta: [{ title: "History — GymJaim" }] }),
+  head: () => ({ meta: [{ title: "History — Jim's Data Gym" }] }),
   component: HistoryPage,
 });
 

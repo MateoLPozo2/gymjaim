@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { synthesizeVoice } from "@/lib/api/voice.functions";
 
-const STORAGE_KEY = "gymjaim_voice_coach";
+const STORAGE_KEY = "jims-data-gym_voice_coach";
 
 export function useVoiceCoach() {
   const synthFn = useServerFn(synthesizeVoice);

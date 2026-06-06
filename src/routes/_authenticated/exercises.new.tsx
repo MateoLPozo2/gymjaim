@@ -18,7 +18,7 @@ import { DatasetUploadPreview } from "@/components/datasets/DatasetUploadPreview
 import type { DatasetProfile } from "@/lib/datasets/profile-local";
 
 export const Route = createFileRoute("/_authenticated/exercises/new")({
-  head: () => ({ meta: [{ title: "New exercise — GymJaim" }] }),
+  head: () => ({ meta: [{ title: "New exercise — Jim's Data Gym" }] }),
   component: NewExercise,
 });
 
