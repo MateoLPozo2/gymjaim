@@ -45,6 +45,15 @@ function SettingsPage() {
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => profileFn() });
   const myDatasets = useQuery({ queryKey: ["my-datasets"], queryFn: () => myDsFn() });
   const reviews = useQuery({ queryKey: ["scheduled-reviews"], queryFn: () => reviewsFn() });
+  const onboarding = useQuery({ queryKey: ["onboarding-status"], queryFn: () => onbStatusFn() });
+
+  const welcomeMut = useMutation({
+    mutationFn: (enabled: boolean) => setWelcomeFn({ data: { enabled } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["onboarding-status"] });
+      toast.success("Saved");
+    },
+  });
 
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [recipientInput, setRecipientInput] = useState("");
