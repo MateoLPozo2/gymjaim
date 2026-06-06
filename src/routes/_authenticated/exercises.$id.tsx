@@ -227,8 +227,16 @@ function Runner({
     Math.abs(slopes.user - slopes.optimal) < 1e-4;
 
   async function onRun() {
-    if (pyodide.status === "loading") {
-      toast.message("Pyodide is still booting (one-time, ~10s)…");
+    if (pyodide.status === "loading" || pyodide.status === "idle") {
+      toast.message("Python runtime is still booting (one-time, ~10s)…");
+      return;
+    }
+    if (pyodide.status === "error") {
+      toast.error(pyodide.error ?? "Python runtime failed to load");
+      return;
+    }
+    if (pyodide.status === "ready") {
+      toast.message("Loading dataset into pandas…");
       return;
     }
     setRunning(true);
@@ -241,6 +249,10 @@ function Runner({
         error: result.error,
       });
       if (result.dfCsv) setWorkingCsv(parseCsv(result.dfCsv));
+      if (result.error) toast.error("Code raised an exception — see output");
+      else toast.success("Run complete");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Run failed");
     } finally {
       setRunning(false);
     }
@@ -249,9 +261,11 @@ function Runner({
   async function onReset() {
     if (!plan) return;
     setWorkingCsv(plan.workingCsv);
+    setCode(starterCode);
     await pyodide.resetDataset(csvToString(plan.workingCsv));
     setOutput(null);
-    toast.success("Reverted to the starting missing-values dataset");
+    recordedRef.current = false;
+    toast.success("Reverted dataset and code to the starter state");
   }
 
   async function onSave() {
