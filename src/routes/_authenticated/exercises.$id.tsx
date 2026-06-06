@@ -477,13 +477,15 @@ function SampleSolutions({
 
 function PyodideStatus({ status }: { status: string }) {
   const text =
-    status === "loading"
+    status === "loading" || status === "idle"
       ? "Booting Python runtime…"
-      : status === "ready" || status === "dataset"
-        ? "Python ready"
-        : status === "error"
-          ? "Python failed to load"
-          : "";
+      : status === "ready"
+        ? "Python ready · loading dataset"
+        : status === "dataset"
+          ? "Python + pandas ready"
+          : status === "error"
+            ? "Python failed to load"
+            : "";
   if (!text) return null;
   return (
     <span className="text-xs font-mono text-muted-foreground">
