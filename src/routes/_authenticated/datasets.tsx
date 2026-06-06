@@ -37,9 +37,13 @@ function DatasetsPage() {
 
       <div className="mt-8 grid gap-4">
         {(q.data?.datasets ?? []).map((d: any) => (
-          <Card key={d.id}>
+          <Card key={d.id} className="hover:border-accent/50 transition-colors">
             <CardHeader className="flex-row items-start justify-between space-y-0">
-              <div>
+              <Link
+                to="/datasets/$id"
+                params={{ id: d.id }}
+                className="flex-1 min-w-0 -m-2 p-2 rounded-md hover:bg-accent/5"
+              >
                 <CardTitle className="font-display text-lg flex items-center gap-2">
                   {d.name}
                   {d.is_builtin && <Badge variant="secondary">built-in</Badge>}
@@ -50,7 +54,7 @@ function DatasetsPage() {
                   cols: {(d.columns || []).slice(0, 6).join(", ")}
                   {(d.columns || []).length > 6 ? "…" : ""}
                 </p>
-              </div>
+              </Link>
               {!d.is_builtin && (
                 <PublicToggle
                   id={d.id}

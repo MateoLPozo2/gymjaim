@@ -65,3 +65,27 @@ export const getDatasetSignedUrl = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { url: signed.signedUrl };
   });
+
+const GetDatasetDetailInput = z.object({ id: z.string().uuid() });
+
+export const getDatasetDetail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => GetDatasetDetailInput.parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabase } = context;
+    const { data: ds, error } = await supabase
+      .from("datasets")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!ds) throw new Error("Dataset not found");
+    let csvUrl: string | null = null;
+    if (ds.storage_path) {
+      const { data: signed } = await supabase.storage
+        .from("datasets")
+        .createSignedUrl(ds.storage_path, 60 * 10);
+      csvUrl = signed?.signedUrl ?? null;
+    }
+    return { dataset: ds, csvUrl };
+  });
