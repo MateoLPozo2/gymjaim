@@ -335,9 +335,18 @@ function Runner({
                 }}
               />
             </div>
-            <div className="mt-3 flex gap-2">
-              <Button onClick={onRun} disabled={running || pyodide.status === "loading"} className="gap-2">
-                <Play className="h-4 w-4" /> Run
+            <div className="mt-3 flex gap-2 flex-wrap">
+              <Button
+                onClick={onRun}
+                disabled={
+                  running ||
+                  pyodide.status === "loading" ||
+                  pyodide.status === "idle" ||
+                  pyodide.status === "error"
+                }
+                className="gap-2"
+              >
+                <Play className="h-4 w-4" /> {running ? "Running…" : "Run"}
               </Button>
               <Button variant="outline" onClick={onReset} className="gap-2">
                 <RotateCw className="h-4 w-4" /> Reset
@@ -346,6 +355,11 @@ function Runner({
                 <Check className="h-4 w-4" /> Save rep
               </Button>
             </div>
+            {workingCsv && (
+              <p className="mt-2 text-[11px] font-mono text-muted-foreground">
+                df ready · {workingCsv.rows.length} rows × {workingCsv.columns.length} cols
+              </p>
+            )}
             {output && (
               <div className="mt-4 space-y-3">
                 {output.error && (
