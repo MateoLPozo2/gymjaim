@@ -1,7 +1,6 @@
 import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Link } from "@tanstack/react-router";
 import {
   getMyProfile,
   setEmailCadence,
@@ -9,9 +8,7 @@ import {
   scheduleTestReview,
   processDueReviews,
 } from "@/lib/api/attempts.functions";
-import { listMyDatasets } from "@/lib/api/datasets.functions";
 import { setWelcomeOnNextLogin, getOnboardingStatus } from "@/lib/onboarding.functions";
-import { VOICE_COACH_STORAGE_KEY } from "@/hooks/use-voice-coach";
 import { parseRecipientEmails } from "@/lib/reviews/parse-recipient-emails";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -20,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
-import { Mail, Send, Volume2 } from "lucide-react";
+import { Mail, Send } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — Jim's Data Gym" }] }),
@@ -35,7 +32,6 @@ function SettingsPage() {
   const qc = useQueryClient();
   const profileFn = useServerFn(getMyProfile);
   const setFn = useServerFn(setEmailCadence);
-  const myDsFn = useServerFn(listMyDatasets);
   const reviewsFn = useServerFn(listScheduledReviews);
   const scheduleFn = useServerFn(scheduleTestReview);
   const processFn = useServerFn(processDueReviews);
@@ -43,7 +39,6 @@ function SettingsPage() {
   const setWelcomeFn = useServerFn(setWelcomeOnNextLogin);
 
   const profile = useQuery({ queryKey: ["my-profile"], queryFn: () => profileFn() });
-  const myDatasets = useQuery({ queryKey: ["my-datasets"], queryFn: () => myDsFn() });
   const reviews = useQuery({ queryKey: ["scheduled-reviews"], queryFn: () => reviewsFn() });
   const onboarding = useQuery({ queryKey: ["onboarding-status"], queryFn: () => onbStatusFn() });
 
@@ -69,14 +64,13 @@ function SettingsPage() {
     onSuccess: () => toast.success("Saved"),
   });
 
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [recipientInput, setRecipientInput] = useState("");
   const recipientRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setVoiceEnabled(localStorage.getItem(VOICE_COACH_STORAGE_KEY) === "true");
     setRecipientInput(localStorage.getItem(REVIEW_RECIPIENTS_KEY) ?? "");
   }, []);
+
 
   useEffect(() => {
     const el = recipientRef.current;
